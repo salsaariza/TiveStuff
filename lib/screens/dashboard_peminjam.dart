@@ -26,13 +26,13 @@ class DashboardPeminjam extends StatelessWidget {
 
           switch (index) {
             case 1:
-              Navigator.pushReplacementNamed(context, '/alat');
+              Navigator.pushReplacementNamed(context, '/alatpeminjam');
               break;
             case 2:
-              Navigator.pushReplacementNamed(context, '/pengajuan');
+              Navigator.pushReplacementNamed(context, '/pengajuanpeminjam');
               break;
             case 3:
-              Navigator.pushReplacementNamed(context, '/pengembalian');
+              Navigator.pushReplacementNamed(context, '/pengembalianpeminjam');
               break;
           }
         },

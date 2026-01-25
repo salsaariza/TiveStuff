@@ -82,11 +82,11 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
 
           if (index == 0) {
             Navigator.pushReplacementNamed(
-                context, '/dashboardpeminjaman');
+                context, '/dashboardpeminjam');
           } else if (index == 2) {
-            Navigator.pushReplacementNamed(context, '/pengajuan');
+            Navigator.pushReplacementNamed(context, '/pengajuanpeminjam');
           } else if (index == 3) {
-            Navigator.pushReplacementNamed(context, '/pengembalian');
+            Navigator.pushReplacementNamed(context, '/pengembalianpeminjam');
           }
         },
       ),
