@@ -26,7 +26,7 @@ class _PengembalianScreenState extends State<PengembalianPeminjamScreen> {
             Navigator.pushReplacementNamed(
                 context, '/dashboardpeminjam');
           } else if (index == 1) {
-            Navigator.pushReplacementNamed(context, '/keranjangpeminjaman');
+            Navigator.pushReplacementNamed(context, '/alatpeminjam');
           } else if (index == 2) {
             Navigator.pushReplacementNamed(context, '/pengajuanpeminjam');
           }

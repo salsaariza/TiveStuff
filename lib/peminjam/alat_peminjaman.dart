@@ -286,6 +286,18 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
+                "Stok : 10",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
                 "Spesifikasi",
                 style: GoogleFonts.poppins(
                   fontSize: 13,
