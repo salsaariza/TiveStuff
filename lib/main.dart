@@ -85,8 +85,6 @@ class AuthGate extends StatelessWidget {
   Future<String> _initialRoute() async {
     final supabase = Supabase.instance.client;
     final session = supabase.auth.currentSession;
-
-    // Belum login → SplashScreen dulu
     if (session == null) return '/login';
 
     // Ambil role dari tabel users
