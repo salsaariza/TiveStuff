@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
 
@@ -11,53 +13,396 @@ class RiwayatScreen extends StatefulWidget {
 }
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
-  int selectedFilter = 0;
+  final supabase = Supabase.instance.client;
 
-  final List<Map<String, String>> _data = [
-    {"nama": "Ajeng Chalista", "status": "Peminjaman"},
-    {"nama": "Salsadilla Ariza", "status": "Pengembalian"},
-    {"nama": "Abyan Pradipta", "status": "Pengembalian"},
-    {"nama": "Richo Ferdinand", "status": "Peminjaman"},
-    {"nama": "Azura Selly", "status": "Pengembalian"},
-  ];
+  int selectedFilter = 0; // 0 = Semua, 1 = Peminjaman, 2 = Pengembalian
+  bool isLoading = true;
 
-  List<Map<String, String>> get filteredData {
-    if (selectedFilter == 1) {
-      return _data.where((e) => e['status'] == "Peminjaman").toList();
-    } else if (selectedFilter == 2) {
-      return _data.where((e) => e['status'] == "Pengembalian").toList();
-    }
-    return _data;
+  List<Map<String, dynamic>> riwayatData = [];
+
+  final List<String> kondisiOptions = ['baik', 'pemeliharaan', 'rusak'];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRiwayat();
   }
 
+  // ================== FETCH DATA ==================
+  Future<void> fetchRiwayat() async {
+    setState(() => isLoading = true);
+
+    try {
+      // Ambil Peminjaman beserta user
+      final peminjaman = await supabase
+          .from('peminjaman')
+          .select('''
+            id_peminjaman, status_peminjaman, tanggal_pinjam, tanggal_kembali, 
+            users!peminjaman_id_user_fkey(username)
+            ''')
+          .order('created_at', ascending: false);
+
+      // Ambil Pengembalian beserta peminjaman dan user
+      final pengembalian = await supabase
+          .from('pengembalian')
+          .select('''
+            id_pengembalian, tanggal_kembali, kondisi_alat, peminjaman!pengembalian_id_peminjaman_fkey(
+              users!peminjaman_id_user_fkey(username)
+            )
+            ''')
+          .order('created_at', ascending: false);
+
+      List<Map<String, dynamic>> combined = [];
+
+      // Map Peminjaman
+      for (var item in peminjaman) {
+        combined.add({
+          'id': item['id_peminjaman'],
+          'nama': item['users']?['username'] ?? 'Unknown',
+          'status': item['status_peminjaman'] ?? 'menunggu',
+          'tanggal_pinjam': item['tanggal_pinjam'],
+          'tanggal_kembali': item['tanggal_kembali'],
+          'kondisi': '-', // belum ada kondisi alat
+          'type': 'Peminjaman',
+        });
+      }
+
+      // Map Pengembalian
+      for (var item in pengembalian) {
+        combined.add({
+          'id': item['id_pengembalian'],
+          'nama': item['peminjaman']?['users']?['username'] ?? 'Unknown',
+          'status': 'Pengembalian',
+          'tanggal_pinjam': null,
+          'tanggal_kembali': item['tanggal_kembali'],
+          'kondisi': item['kondisi_alat'] ?? 'baik',
+          'type': 'Pengembalian',
+        });
+      }
+
+      setState(() {
+        riwayatData = combined;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+      print("Error fetchRiwayat: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal mengambil data riwayat: $e")),
+      );
+    }
+  }
+
+  // ================== FILTER ==================
+  List<Map<String, dynamic>> get filteredData {
+    if (selectedFilter == 1) {
+      return riwayatData.where((e) => e['type'] == 'Peminjaman').toList();
+    } else if (selectedFilter == 2) {
+      return riwayatData.where((e) => e['type'] == 'Pengembalian').toList();
+    }
+    return riwayatData;
+  }
+
+  // ================== DELETE ==================
+  Future<void> deleteRiwayat(Map<String, dynamic> item) async {
+    try {
+      if (item['type'] == 'Peminjaman') {
+        await supabase
+            .from('peminjaman')
+            .delete()
+            .eq('id_peminjaman', item['id']);
+      } else {
+        await supabase
+            .from('pengembalian')
+            .delete()
+            .eq('id_pengembalian', item['id']);
+      }
+      fetchRiwayat();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Riwayat berhasil dihapus")));
+    } catch (e) {
+      print("Error deleteRiwayat: $e");
+    }
+  }
+
+  void showDeleteDialog(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Hapus Riwayat",
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Yakin ingin menghapus data ini?",
+                style: GoogleFonts.poppins(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "Batal",
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      deleteRiwayat(item);
+                    },
+                    child: Text(
+                      "Hapus",
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ================== EDIT ==================
+  void editRiwayat(Map<String, dynamic> item) {
+    DateTime tanggalKembali = item['tanggal_kembali'] != null
+        ? DateTime.parse(item['tanggal_kembali'])
+        : DateTime.now();
+    String kondisi = item['kondisi'] ?? 'baik';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width:
+                    MediaQuery.of(context).size.width *
+                    0.9, // dialog 90% lebar layar
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Judul
+                      Text(
+                        "Edit Riwayat",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Tanggal Kembali
+                      Text(
+                        "Tanggal Kembali",
+                        style: GoogleFonts.poppins(fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () async {
+                          DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: tanggalKembali,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setStateDialog(() => tanggalKembali = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 18,
+                                color: Colors.grey.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "${tanggalKembali.day}-${tanggalKembali.month}-${tanggalKembali.year}",
+                                style: GoogleFonts.poppins(fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Kondisi Alat jika tipe Pengembalian
+                      if (item['type'] == 'Pengembalian') ...[
+                        Text(
+                          "Kondisi Alat",
+                          style: GoogleFonts.poppins(fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          value: kondisi,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
+                          ),
+                          items: kondisiOptions
+                              .map(
+                                (k) => DropdownMenuItem(
+                                  value: k,
+                                  child: Text(
+                                    k,
+                                    style: GoogleFonts.poppins(fontSize: 13),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) => setStateDialog(
+                            () => kondisi = value ?? kondisiOptions.first,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                "Batal",
+                                style: GoogleFonts.poppins(fontSize: 13),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (item['type'] == 'Pengembalian') {
+                                  await supabase
+                                      .from('pengembalian')
+                                      .update({
+                                        'tanggal_kembali': tanggalKembali
+                                            .toIso8601String(),
+                                        'kondisi_alat': kondisi,
+                                        'update_at': DateTime.now()
+                                            .toIso8601String(),
+                                      })
+                                      .eq('id_pengembalian', item['id']);
+                                } else {
+                                  await supabase
+                                      .from('peminjaman')
+                                      .update({
+                                        'tanggal_kembali': tanggalKembali
+                                            .toIso8601String(),
+                                        'update_at': DateTime.now()
+                                            .toIso8601String(),
+                                      })
+                                      .eq('id_peminjaman', item['id']);
+                                }
+                                Navigator.pop(context);
+                                fetchRiwayat();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                "Konfirmasi",
+                                style: GoogleFonts.poppins(fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ================== UI ==================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
-
       bottomNavigationBar: AppBottomNav(
         currentIndex: 3,
         onTap: (index) {
           if (index == 3) return;
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          } else if (index == 1) {
-            Navigator.pushReplacementNamed(context, '/alat');
-          } else if (index == 2) {
-            Navigator.pushReplacementNamed(context, '/pengguna');
-          } else if (index == 4) {
-            Navigator.pushReplacementNamed(context, '/aktivitas');
-          }
+          if (index == 0) Navigator.pushReplacementNamed(context, '/dashboard');
+          if (index == 1) Navigator.pushReplacementNamed(context, '/alat');
+          if (index == 2) Navigator.pushReplacementNamed(context, '/pengguna');
+          if (index == 4) Navigator.pushReplacementNamed(context, '/aktivitas');
         },
       ),
-
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Header(),
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
@@ -68,14 +413,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: "Cari Pengguna",
+                  hintText: "Cari",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
                   suffixIcon: const Icon(Icons.search),
                   filled: true,
@@ -86,19 +429,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade400, width: 1.5),
+                    borderSide: BorderSide(
+                      color: Colors.grey.shade400,
+                      width: 1.5,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF6C6D7A), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF6C6D7A),
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 14),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -111,20 +457,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: filteredData.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _riwayatCard(data: filteredData[index]),
-                  );
-                },
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: filteredData.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _riwayatCard(filteredData[index]),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -134,7 +480,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
   Widget _filterChip(String text, int index) {
     final isActive = selectedFilter == index;
-
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = index),
       child: Container(
@@ -147,7 +492,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         child: Text(
           text,
           style: GoogleFonts.poppins(
-            fontSize: 12,
+            fontSize: 14,
             color: isActive ? Colors.white : Colors.black87,
           ),
         ),
@@ -155,7 +500,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _riwayatCard({required Map<String, String> data}) {
+  Widget _riwayatCard(Map<String, dynamic> item) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -177,152 +522,67 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data['nama']!,
+                  item['nama'],
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 15),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4F8F2F),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    data['status']!,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Column(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.delete, size: 18),
-                onPressed: () => _showDeleteDialog(data),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit, size: 18),
-                onPressed: () => _editItem(data),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ================= DELETE DIALOG (CUSTOM) =================
-  void _showDeleteDialog(Map<String, String> item) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Hapus Riwayat",
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Yakin ingin menghapus data ini?",
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4F8F2F),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       child: Text(
-                        "Batal",
+                        item['status'],
                         style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.blueGrey,
+                          fontSize: 14,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    TextButton(
-                      onPressed: () {
-                        setState(() => _data.remove(item));
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        "Hapus",
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600,
+                    const SizedBox(width: 8),
+                    if (item['type'] == 'Pengembalian')
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade600,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          item['kondisi'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  // ================= EDIT =================
-  void _editItem(Map<String, String> item) {
-    String status = item['status']!;
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Edit Riwayat"),
-        content: DropdownButtonFormField<String>(
-          value: status,
-          items: const [
-            DropdownMenuItem(
-              value: "Peminjaman",
-              child: Text("Peminjaman"),
-            ),
-            DropdownMenuItem(
-              value: "Pengembalian",
-              child: Text("Pengembalian"),
-            ),
-          ],
-          onChanged: (value) => status = value!,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() => item['status'] = status);
-              Navigator.pop(context);
-            },
-            child: const Text("Simpan"),
+          Column(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.delete, size: 18),
+                onPressed: () => showDeleteDialog(item),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit, size: 18),
+                onPressed: () => editRiwayat(item),
+              ),
+            ],
           ),
         ],
       ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
-import 'package:tivestuff1/admin/aktivitas_detail.dart';
 
 class AktivitasScreen extends StatefulWidget {
   const AktivitasScreen({super.key});
@@ -12,23 +12,55 @@ class AktivitasScreen extends StatefulWidget {
 }
 
 class _AktivitasScreenState extends State<AktivitasScreen> {
-  final List<Map<String, String>> aktivitas = [
-    {
-      "judul": "Pengajuan Peminjaman",
-      "petugas": "Salsa",
-      "keterangan": "Peminjam : Abyan",
-    },
-    {
-      "judul": "Penambahan Pengguna",
-      "petugas": "Salsa",
-      "keterangan": "Pengguna : Rizal",
-    },
-    {
-      "judul": "Pengembalian",
-      "petugas": "Salsa",
-      "keterangan": "Peminjam : Richo",
-    },
-  ];
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  List<Map<String, dynamic>> aktivitas = [];
+  bool isLoading = true;
+  String searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAktivitas();
+  }
+
+  // ================= FETCH DATA =================
+  Future<void> fetchAktivitas() async {
+    setState(() => isLoading = true);
+    try {
+      final List<dynamic> data = await supabase
+          .from('log_aktivitas')
+          .select('id_log, aktivitas, id_user, created_at')
+          .order('created_at', ascending: false);
+
+      setState(() {
+        aktivitas = data
+            .map((e) => {
+                  'id': e['id_log'],
+                  'aktivitas': e['aktivitas'] ?? '',
+                  'petugas': e['id_user'] ?? 'Unknown',
+                  'created_at': e['created_at'] != null
+                      ? DateTime.parse(e['created_at']).toLocal()
+                      : null,
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Error fetching aktivitas: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  // ================= SEARCH FILTER =================
+  List<Map<String, dynamic>> get filteredAktivitas {
+    if (searchQuery.isEmpty) return aktivitas;
+    return aktivitas
+        .where((a) =>
+            a['aktivitas'].toLowerCase().contains(searchQuery.toLowerCase()) ||
+            a['petugas'].toString().toLowerCase().contains(searchQuery.toLowerCase()))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +94,7 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                "Aktivitas",
+                "Log Aktivitas",
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -72,11 +104,13 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
 
             const SizedBox(height: 12),
 
+            // ================= SEARCH BAR =================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
+                onChanged: (value) => setState(() => searchQuery = value),
                 decoration: InputDecoration(
-                  hintText: "Cari Pengguna",
+                  hintText: "Cari",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
                   suffixIcon: const Icon(Icons.search),
                   filled: true,
@@ -101,14 +135,24 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
 
             const SizedBox(height: 16),
 
+            // ================= LIST AKTIVITAS =================
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: aktivitas.length,
-                itemBuilder: (context, index) {
-                  return _aktivitasCard(aktivitas[index]);
-                },
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredAktivitas.isEmpty
+                      ? Center(
+                          child: Text(
+                            "Tidak ada aktivitas",
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: filteredAktivitas.length,
+                          itemBuilder: (context, index) {
+                            return _aktivitasCard(filteredAktivitas[index]);
+                          },
+                        ),
             ),
           ],
         ),
@@ -117,7 +161,7 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
   }
 
   // ================= CARD =================
-  Widget _aktivitasCard(Map<String, String> data) {
+  Widget _aktivitasCard(Map<String, dynamic> data) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
@@ -136,7 +180,7 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            data['judul']!,
+            data['aktivitas'],
             style: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -148,48 +192,23 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
           Text(
             "Petugas : ${data['petugas']}",
             style: GoogleFonts.poppins(
-              fontSize: 13,
+              fontSize: 15,
               color: Colors.black54,
             ),
           ),
+
           Text(
-            data['keterangan']!,
+            data['created_at'] != null
+                ? "Waktu : ${data['created_at'].day}-${data['created_at'].month}-${data['created_at'].year} ${data['created_at'].hour}:${data['created_at'].minute}"
+                : "",
             style: GoogleFonts.poppins(
-              fontSize: 13,
+              fontSize: 15,
               color: Colors.black54,
             ),
           ),
 
           const SizedBox(height: 12),
 
-          // ================= DETAIL BUTTON =================
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const DetailAktivitasScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.edit, size: 16),
-              label: Text(
-                "Detail",
-                style: GoogleFonts.poppins(fontSize: 13),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C6D7A),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tivestuff1/widgets/back_petugas.dart';
 import 'package:tivestuff1/widgets/nav_petugas.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PengajuanPeminjamanScreen extends StatefulWidget {
   const PengajuanPeminjamanScreen({super.key});
@@ -11,22 +12,97 @@ class PengajuanPeminjamanScreen extends StatefulWidget {
       _PengajuanPeminjamanScreenState();
 }
 
-class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
+class _PengajuanPeminjamanScreenState
+    extends State<PengajuanPeminjamanScreen> {
+  final SupabaseClient supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> peminjaman = [];
+  bool isLoading = true;
+  String searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchPeminjaman();
+  }
+
+  // ================= FETCH DATA =================
+  Future<void> fetchPeminjaman() async {
+    setState(() => isLoading = true);
+    try {
+      final data = await supabase
+          .from('peminjaman')
+          .select()
+          .order('created_at', ascending: false);
+
+      List<Map<String, dynamic>> temp = [];
+
+      for (var e in data) {
+        String namaUser = '-';
+        String namaAlat = '-';
+
+        if (e['id_user'] != null) {
+          final user = await supabase
+              .from('users')
+              .select('username')
+              .eq('id_user', e['id_user'])
+              .single();
+          namaUser = user['username'] ?? '-';
+        }
+
+        if (e['id_alat'] != null) {
+          final alat = await supabase
+              .from('alat')
+              .select('nama_alat')
+              .eq('id_alat', e['id_alat'])
+              .single();
+          namaAlat = alat['nama_alat'] ?? '-';
+        }
+
+        temp.add({
+          'id': e['id_peminjaman'],
+          'kode': 'PJ ${e['id_peminjaman'].toString().padLeft(4, '0')}',
+          'nama': namaUser,
+          'kelas': e['tingkatan_kelas'] ?? '-',
+          'tanggal': e['tanggal_pinjam'] != null
+              ? DateTime.parse(e['tanggal_pinjam']).toLocal()
+              : null,
+          'barang': namaAlat,
+          'status': e['status_peminjaman'], // <<< PENTING
+        });
+      }
+
+      setState(() => peminjaman = temp);
+    } catch (e) {
+      debugPrint('Error: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  // ================= SEARCH =================
+  List<Map<String, dynamic>> get filteredPeminjaman {
+    if (searchQuery.isEmpty) return peminjaman;
+    return peminjaman.where((p) {
+      return p['kode'].toLowerCase().contains(searchQuery.toLowerCase()) ||
+          p['nama'].toLowerCase().contains(searchQuery.toLowerCase()) ||
+          p['kelas'].toLowerCase().contains(searchQuery.toLowerCase()) ||
+          p['barang'].toLowerCase().contains(searchQuery.toLowerCase());
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isTablet = size.width >= 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6E6E6),
+      backgroundColor: const Color(0xFFEFEFEF),
       bottomNavigationBar: NavPetugas(
         currentIndex: 1,
         onTap: (index) {
           if (index == 1) return;
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/dashboardpetugas');
-          } else if (index == 1) {
-            Navigator.pushReplacementNamed(context, '/peminjaman');
           } else if (index == 2) {
             Navigator.pushReplacementNamed(context, '/pengembalian');
           } else if (index == 3) {
@@ -34,12 +110,10 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
           }
         },
       ),
-
       body: SafeArea(
         child: Column(
           children: [
             const HeaderPetugas(),
-
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(
@@ -57,12 +131,10 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // ================= SEARCH =================
                     TextField(
+                      onChanged: (v) => setState(() => searchQuery = v),
                       decoration: InputDecoration(
                         hintText: "Cari",
-                        hintStyle: GoogleFonts.poppins(fontSize: 13),
                         suffixIcon: const Icon(Icons.search),
                         filled: true,
                         fillColor: Colors.white,
@@ -70,52 +142,34 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                           horizontal: 14,
                           vertical: 12,
                         ),
-                        enabledBorder: OutlineInputBorder(
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1.5,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF6C6D7A),
-                            width: 2,
-                          ),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 14),
-
-                    // ================= LIST =================
                     Expanded(
-                      child: ListView(
-                        children: const [
-                          PengajuanCard(
-                            kode: "PJ 1261",
-                            nama: "Ajeng Chalista",
-                            kelas: "XI TKR 1",
-                            tanggal: "19-01-2026",
-                            barang: "1 Kompresor, 1 Obeng",
-                          ),
-                          PengajuanCard(
-                            kode: "PJ 1262",
-                            nama: "Richo Ferdinand",
-                            kelas: "XI TKR 5",
-                            tanggal: "19-01-2026",
-                            barang: "1 Kunci Inggris, 1 Jangka Sorong",
-                          ),
-                          PengajuanCard(
-                            kode: "PJ 1263",
-                            nama: "Azura Selly",
-                            kelas: "XII TKR 1",
-                            tanggal: "19-01-2026",
-                            barang: "1 Mikrometer",
-                          ),
-                        ],
-                      ),
+                      child: isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(),
+                            )
+                          : ListView.builder(
+                              itemCount: filteredPeminjaman.length,
+                              itemBuilder: (context, index) {
+                                final data = filteredPeminjaman[index];
+                                return PengajuanCard(
+                                  id: data['id'],
+                                  kode: data['kode'],
+                                  nama: data['nama'],
+                                  kelas: data['kelas'],
+                                  tanggal: data['tanggal'] != null
+                                      ? "${data['tanggal'].day}-${data['tanggal'].month}-${data['tanggal'].year}"
+                                      : '-',
+                                  barang: data['barang'],
+                                  status: data['status'],
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -129,21 +183,48 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
 }
 
 // ================= CARD =================
-class PengajuanCard extends StatelessWidget {
+class PengajuanCard extends StatefulWidget {
+  final int id;
   final String kode;
   final String nama;
   final String kelas;
   final String tanggal;
   final String barang;
+  final String status;
 
   const PengajuanCard({
     super.key,
+    required this.id,
     required this.kode,
     required this.nama,
     required this.kelas,
     required this.tanggal,
     required this.barang,
+    required this.status,
   });
+
+  @override
+  State<PengajuanCard> createState() => _PengajuanCardState();
+}
+
+class _PengajuanCardState extends State<PengajuanCard> {
+  final supabase = Supabase.instance.client;
+  late String status;
+
+  @override
+  void initState() {
+    super.initState();
+    status = widget.status;
+  }
+
+  Future<void> updateStatus(String newStatus) async {
+    await supabase
+        .from('peminjaman')
+        .update({'status_peminjaman': newStatus})
+        .eq('id_peminjaman', widget.id);
+
+    setState(() => status = newStatus);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,70 +247,77 @@ class PengajuanCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                kode,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
+              Text(widget.kode),
               const Spacer(),
-              Text(
-                tanggal,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
+              Text(widget.tanggal),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            nama,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            widget.nama,
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          Text(kelas, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(widget.kelas,
+              style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 6),
-          Text(barang, style: const TextStyle(fontSize: 12)),
+          Text(widget.barang),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF6B6D7A)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text("Tolak", style: TextStyle(fontSize: 12)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/detailpeminjaman',
-                      arguments: {
-                        'kode': kode,
-                        'nama': nama,
-                        'kelas': kelas,
-                        'tanggal': tanggal,
-                        'barang': barang,
-                      },
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6B6D7A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    "Setuju",
-                    style: TextStyle(fontSize: 12, color: Colors.white),
+
+          // ===== ACTION (TANPA UBAH UI) =====
+          if (status == 'menunggu')
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => updateStatus('ditolak'),
+                    child: const Text("Tolak"),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => updateStatus('disetujui'),
+                    child: const Text("Setuju"),
+                  ),
+                ),
+              ],
+            )
+          else if (status == 'disetujui')
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE4F4D8),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.green),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.green, size: 18),
+                  SizedBox(width: 8),
+                  Text("Peminjaman Disetujui",
+                      style: TextStyle(color: Colors.green)),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFADCDC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.cancel, color: Colors.red, size: 18),
+                  SizedBox(width: 8),
+                  Text("Peminjaman Ditolak",
+                      style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
         ],
       ),
     );

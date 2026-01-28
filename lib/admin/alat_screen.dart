@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tivestuff1/models/alat_models.dart';
+
+import '../models/alat_models.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
+
 import 'add_alat.dart';
 import 'add_kategori.dart';
 
@@ -12,7 +14,10 @@ class KategoriModel {
   final int id;
   final String nama;
 
-  KategoriModel({required this.id, required this.nama});
+  KategoriModel({
+    required this.id,
+    required this.nama,
+  });
 
   factory KategoriModel.fromMap(Map<String, dynamic> map) {
     return KategoriModel(
@@ -51,6 +56,7 @@ class _AlatScreenState extends State<AlatScreen> {
   /// ================= FETCH ALAT =================
   Future<void> fetchAlat() async {
     setState(() => isLoading = true);
+
     try {
       final response = await supabase
           .from('alat')
@@ -64,15 +70,19 @@ class _AlatScreenState extends State<AlatScreen> {
 
       setState(() {
         alatList = data;
+
         filteredList = selectedKategori == null
             ? data
-            : data.where((e) => e.idKategori == selectedKategori!.id).toList();
+            : data
+                .where((alat) =>
+                    alat.idKategori == selectedKategori!.id)
+                .toList();
       });
     } catch (e) {
-      debugPrint('ERROR FETCH ALAT: $e');
-    } finally {
-      setState(() => isLoading = false);
+      debugPrint("ERROR FETCH ALAT: $e");
     }
+
+    setState(() => isLoading = false);
   }
 
   /// ================= FETCH KATEGORI =================
@@ -92,7 +102,7 @@ class _AlatScreenState extends State<AlatScreen> {
         kategoriList = data;
       });
     } catch (e) {
-      debugPrint('ERROR FETCH KATEGORI: $e');
+      debugPrint("ERROR FETCH KATEGORI: $e");
     }
   }
 
@@ -100,9 +110,12 @@ class _AlatScreenState extends State<AlatScreen> {
   void filterKategori(KategoriModel? kategori) {
     setState(() {
       selectedKategori = kategori;
+
       filteredList = kategori == null
           ? alatList
-          : alatList.where((e) => e.idKategori == kategori.id).toList();
+          : alatList
+              .where((alat) => alat.idKategori == kategori.id)
+              .toList();
     });
   }
 
@@ -110,7 +123,11 @@ class _AlatScreenState extends State<AlatScreen> {
   void searchAlat(String keyword) {
     setState(() {
       filteredList = alatList
-          .where((e) => e.nama.toLowerCase().contains(keyword.toLowerCase()))
+          .where(
+            (alat) => alat.nama
+                .toLowerCase()
+                .contains(keyword.toLowerCase()),
+          )
           .toList();
     });
   }
@@ -118,19 +135,17 @@ class _AlatScreenState extends State<AlatScreen> {
   /// ================= DELETE =================
   Future<void> deleteAlat(int id) async {
     try {
-      final response = await supabase
-          .from('alat')
-          .update({'delete_at': DateTime.now().toIso8601String()})
-          .eq('id_alat', id);
+      await supabase.from('alat').update({
+        'delete_at': DateTime.now().toIso8601String(),
+      }).eq('id_alat', id);
 
-      if (response != null) {
-        fetchAlat();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Alat berhasil dihapus')),
-        );
-      }
+      fetchAlat();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Alat berhasil dihapus")),
+      );
     } catch (e) {
-      debugPrint('ERROR DELETE ALAT: $e');
+      debugPrint("ERROR DELETE ALAT: $e");
     }
   }
 
@@ -138,7 +153,9 @@ class _AlatScreenState extends State<AlatScreen> {
   Future<void> editAlat(AlatModel alat) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TambahAlatScreen(alat: alat)),
+      MaterialPageRoute(
+        builder: (_) => TambahAlatScreen(alat: alat),
+      ),
     );
 
     if (result != null) {
@@ -146,31 +163,36 @@ class _AlatScreenState extends State<AlatScreen> {
     }
   }
 
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
 
-      /// ================= FLOATING BUTTON =================
+      /// FLOATING BUTTON TAMBAH ALAT
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF6C6D7A),
+        child: const Icon(Icons.build, color: Colors.white),
         onPressed: () async {
-          final newAlat = await Navigator.push(
+          final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const TambahAlatScreen()),
+            MaterialPageRoute(
+              builder: (_) => const TambahAlatScreen(),
+            ),
           );
-          if (newAlat != null) {
-            fetchAlat(); // reload dari Supabase
+
+          if (result != null) {
+            fetchAlat();
           }
         },
-        child: const Icon(Icons.build, color: Colors.white),
       ),
 
-      /// ================= NAV =================
+      /// NAVBAR
       bottomNavigationBar: AppBottomNav(
         currentIndex: 1,
         onTap: (index) {
           if (index == 1) return;
+
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/dashboard');
           } else if (index == 2) {
@@ -183,7 +205,7 @@ class _AlatScreenState extends State<AlatScreen> {
         },
       ),
 
-      /// ================= BODY =================
+      /// BODY
       body: SafeArea(
         child: Column(
           children: [
@@ -198,7 +220,7 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= SEARCH & FILTER =================
+  /// ================= SEARCH + FILTER =================
   Widget _searchSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -212,41 +234,51 @@ class _AlatScreenState extends State<AlatScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          /// SEARCH
+          /// SEARCH BAR
           TextField(
             onChanged: searchAlat,
             decoration: InputDecoration(
-              hintText: "Cari",
+              hintText: "Cari alat",
               hintStyle: GoogleFonts.poppins(fontSize: 13),
               suffixIcon: const Icon(Icons.search),
               filled: true,
               fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade400,
+                  width: 1.5,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF6C6D7A), width: 2),
+                borderSide: const BorderSide(
+                  color: Color(0xFF6C6D7A),
+                  width: 2,
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 15),
+          const SizedBox(height: 14),
 
-          /// FILTER + ICON TAMBAH KATEGORI
+          /// FILTER + TAMBAH KATEGORI
           Row(
             children: [
-              // Dropdown kategori
               InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: _showCategoryDropdown,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF6C6D7A),
                     borderRadius: BorderRadius.circular(20),
@@ -255,21 +287,32 @@ class _AlatScreenState extends State<AlatScreen> {
                     children: [
                       Text(
                         selectedKategori?.nama ?? "Semua",
-                        style: GoogleFonts.poppins(fontSize: 15, color: Colors.white),
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.white),
+                      const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                     ],
                   ),
                 ),
               ),
+
               const SizedBox(width: 12),
-              // Tombol tambah kategori
+
+              /// TAMBAH KATEGORI
               InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const KategoriScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const KategoriScreen(),
+                    ),
                   ).then((_) => fetchKategori());
                 },
                 child: Container(
@@ -278,7 +321,11 @@ class _AlatScreenState extends State<AlatScreen> {
                     color: Color(0xFF6C6D7A),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ],
@@ -288,7 +335,7 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= DROPDOWN =================
+  /// ================= DROPDOWN KATEGORI =================
   void _showCategoryDropdown() {
     showModalBottomSheet(
       context: context,
@@ -302,7 +349,10 @@ class _AlatScreenState extends State<AlatScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text("Semua", style: GoogleFonts.poppins(fontSize: 14)),
+                title: Text(
+                  "Semua",
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
                 onTap: () {
                   filterKategori(null);
                   Navigator.pop(context);
@@ -310,7 +360,10 @@ class _AlatScreenState extends State<AlatScreen> {
               ),
               ...kategoriList.map(
                 (kategori) => ListTile(
-                  title: Text(kategori.nama, style: GoogleFonts.poppins(fontSize: 14)),
+                  title: Text(
+                    kategori.nama,
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
                   onTap: () {
                     filterKategori(kategori);
                     Navigator.pop(context);
@@ -324,13 +377,20 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= GRID =================
+  /// ================= GRID ALAT =================
   Widget _gridAlat() {
-    if (isLoading) return const Center(child: CircularProgressIndicator());
-    if (filteredList.isEmpty)
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (filteredList.isEmpty) {
       return Center(
-        child: Text("Data alat kosong", style: GoogleFonts.poppins(color: Colors.grey)),
+        child: Text(
+          "Data alat kosong",
+          style: GoogleFonts.poppins(color: Colors.grey),
+        ),
       );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -349,7 +409,7 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= CARD =================
+  /// ================= CARD ALAT =================
   Widget _alatCard(AlatModel alat) {
     return Material(
       color: Colors.white,
@@ -361,8 +421,8 @@ class _AlatScreenState extends State<AlatScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
+            /// GAMBAR
             Container(
               height: 100,
               margin: const EdgeInsets.all(10),
@@ -370,50 +430,61 @@ class _AlatScreenState extends State<AlatScreen> {
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(12),
                 image: alat.gambar != null
-                    ? DecorationImage(image: NetworkImage(alat.gambar!), fit: BoxFit.cover)
+                    ? DecorationImage(
+                        image: NetworkImage(alat.gambar!),
+                        fit: BoxFit.cover,
+                      )
                     : null,
               ),
             ),
+
+            /// NAMA
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
                 alat.nama,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+
+            const SizedBox(height: 6),
+
+            /// STOK
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
                 "Stok : ${alat.stok}",
-                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey),
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+
+            const Spacer(),
+
+            /// BUTTON EDIT + DELETE
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
               child: Row(
                 children: [
-                  // EDIT BUTTON
                   InkWell(
                     onTap: () => editAlat(alat),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      child: const Icon(Icons.edit, size: 20),
-                    ),
+                    child: const Icon(Icons.edit, size: 20),
                   ),
-                  const SizedBox(width: 10),
-                  // DELETE BUTTON
+                  const SizedBox(width: 12),
                   InkWell(
                     onTap: () => deleteAlat(alat.id),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      child: const Icon(Icons.delete, size: 20),
-                    ),
+                    child: const Icon(Icons.delete, size: 20),
                   ),
                 ],
               ),

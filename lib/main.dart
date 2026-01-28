@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tivestuff1/petugas/kartu_peminjaman.dart';
 
 // Screens umum
 import 'screens/login_screen.dart';
@@ -15,10 +16,10 @@ import 'admin/aktivitas_screen.dart';
 
 // Petugas Screens
 import 'petugas/peminjaman_screen.dart';
-import 'petugas/detail_peminjaman.dart';
 import 'petugas/pengembalian_screen.dart';
 import 'petugas/laporan_screen.dart';
 import 'screens/dashboard_petugas.dart';
+import 'petugas/kartu_peminjaman.dart';
 
 // Peminjam Screens
 import 'peminjam/alat_peminjaman.dart';
@@ -62,9 +63,9 @@ class MyApp extends StatelessWidget {
         // ===== PETUGAS ROUTES =====
         '/dashboardpetugas': (context) => const DashboardPetugas(),
         '/peminjaman': (context) => const PengajuanPeminjamanScreen(),
-        '/detailpeminjaman': (context) => const PeminjamanScreen(),
         '/pengembalian': (context) => const PengembalianScreen(),
         '/laporan': (context) => const LaporanScreen(),
+        '/kartupeminjaman': (context) => const DetailStrukScreen(),
 
         // ===== PEMINJAM ROUTES =====
         '/dashboardpeminjam': (context) => const DashboardPeminjam(),
