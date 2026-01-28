@@ -1,37 +1,39 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:file_picker/file_picker.dart';
+
 import '../widgets/header_back.dart';
 import 'package:tivestuff1/models/alat_models.dart';
 
-class TambahAlatScreen extends StatefulWidget {
-  final AlatModel? alat;
+class EditAlatScreen extends StatefulWidget {
+  final AlatModel alat;
 
-  const TambahAlatScreen({super.key, this.alat});
+  const EditAlatScreen({super.key, required this.alat});
 
   @override
-  State<TambahAlatScreen> createState() => _TambahAlatScreenState();
+  State<EditAlatScreen> createState() => _EditAlatScreenState();
 }
 
-class _TambahAlatScreenState extends State<TambahAlatScreen> {
+class _EditAlatScreenState extends State<EditAlatScreen> {
+  final supabase = Supabase.instance.client;
+
   final OutlineInputBorder _border = OutlineInputBorder(
     borderRadius: BorderRadius.circular(20),
-    borderSide: BorderSide(color: Colors.grey.shade400),
+    borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
   );
-
-  final supabase = Supabase.instance.client;
 
   File? selectedImage;
   Uint8List? selectedWebImage;
-  String? uploadedImageUrl;
+  String? imageUrlLama;
 
-  final TextEditingController namaController = TextEditingController();
-  final TextEditingController stokController = TextEditingController();
-  final TextEditingController spesifikasiController = TextEditingController();
-  final TextEditingController hargaController = TextEditingController();
+  final namaController = TextEditingController();
+  final hargaController = TextEditingController();
+  final stokController = TextEditingController();
+  final spesifikasiController = TextEditingController();
 
   List<Map<String, dynamic>> kategoriList = [];
   Map<String, dynamic>? selectedKategori;
@@ -41,31 +43,41 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
   @override
   void initState() {
     super.initState();
+    _isiDataAwal();
     fetchKategori();
   }
 
-  /// Ambil kategori dari Supabase
-  Future<void> fetchKategori() async {
-    try {
-      final response = await supabase
-          .from('kategori')
-          .select()
-          .filter('delete_at', 'is', null)
-          .order('nama_kategori');
-
-      setState(() {
-        kategoriList = (response as List).cast<Map<String, dynamic>>();
-      });
-    } catch (e) {
-      debugPrint('ERROR FETCH KATEGORI: $e');
-    }
+  /// ================= ISI DATA AWAL =================
+  void _isiDataAwal() {
+    namaController.text = widget.alat.nama;
+    hargaController.text = widget.alat.harga.toString();
+    stokController.text = widget.alat.stok.toString();
+    spesifikasiController.text = widget.alat.spesifikasi ?? '';
+    imageUrlLama = widget.alat.gambar;
   }
 
-  /// PICK IMAGE DARI LAPTOP
+  /// ================= FETCH KATEGORI =================
+  Future<void> fetchKategori() async {
+    final data = await supabase
+        .from('kategori')
+        .select()
+        .filter('delete_at', 'is', null)
+        .order('nama_kategori');
+
+    kategoriList = List<Map<String, dynamic>>.from(data);
+
+    selectedKategori = kategoriList.firstWhere(
+      (k) => k['id_kategori'] == widget.alat.idKategori,
+      orElse: () => kategoriList.first,
+    );
+
+    setState(() {});
+  }
+
+  /// ================= PICK IMAGE =================
   Future<void> pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
-      allowMultiple: false,
       withData: true,
     );
 
@@ -75,19 +87,17 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
     setState(() {
       if (kIsWeb) {
-        // ✅ WEB → gunakan bytes
         selectedWebImage = file.bytes;
         selectedImage = null;
       } else {
-        // ✅ MOBILE/DESKTOP → gunakan path
         selectedImage = File(file.path!);
         selectedWebImage = null;
       }
     });
   }
 
-  /// SUBMIT FORM KE SUPABASE
-  Future<void> submitForm() async {
+  /// ================= SUBMIT EDIT =================
+  Future<void> submitEdit() async {
     if (namaController.text.isEmpty ||
         hargaController.text.isEmpty ||
         selectedKategori == null) {
@@ -100,74 +110,55 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     setState(() => isLoading = true);
 
     try {
-      String? imageUrl;
+      String? imageUrl = imageUrlLama;
 
-      /// =============================
-      /// UPLOAD GAMBAR (JIKA ADA)
-      /// =============================
       if ((kIsWeb && selectedWebImage != null) ||
           (!kIsWeb && selectedImage != null)) {
-        final fileName = "alat_${DateTime.now().millisecondsSinceEpoch}.png";
+        final fileName = 'alat_${DateTime.now().millisecondsSinceEpoch}.png';
 
         if (kIsWeb) {
-          // ✅ WEB Upload
-          await supabase.storage
-              .from('alat_image')
-              .uploadBinary(
+          await supabase.storage.from('alat_image').uploadBinary(
                 fileName,
                 selectedWebImage!,
-                fileOptions: const FileOptions(contentType: "image/png"),
+                fileOptions: const FileOptions(contentType: 'image/png'),
               );
         } else {
-          // ✅ MOBILE/DESKTOP Upload
-          await supabase.storage
-              .from('alat_image')
-              .upload(
+          await supabase.storage.from('alat_image').upload(
                 fileName,
                 selectedImage!,
-                fileOptions: const FileOptions(contentType: "image/png"),
+                fileOptions: const FileOptions(contentType: 'image/png'),
               );
         }
 
-        // ✅ Ambil URL publik
-        imageUrl = supabase.storage.from('alat_image').getPublicUrl(fileName);
-
-        debugPrint("URL gambar berhasil: $imageUrl");
+        imageUrl =
+            supabase.storage.from('alat_image').getPublicUrl(fileName);
       }
 
-      /// =============================
-      /// INSERT DATA KE DATABASE
-      /// =============================
-      final response = await supabase.from('alat').insert({
+      await supabase.from('alat').update({
         'nama_alat': namaController.text,
         'id_kategori': selectedKategori!['id_kategori'],
-        'harga_alat': double.tryParse(hargaController.text) ?? 0,
-        'spesifikasi_alat': spesifikasiController.text,
+        'harga_alat': double.parse(hargaController.text),
         'stok': int.tryParse(stokController.text) ?? 0,
+        'spesifikasi_alat': spesifikasiController.text,
         'gambar_alat': imageUrl,
-      }).select();
+      }).eq('id_alat', widget.alat.id);
 
-      /// =============================
-      /// BERHASIL
-      /// =============================
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Alat berhasil ditambahkan")),
+        const SnackBar(content: Text("Alat berhasil diperbarui")),
       );
 
-      // ✅ Kembali sambil kirim data baru
-      Navigator.pop(context, response[0]);
+      Navigator.pop(context, true);
     } catch (e) {
-      debugPrint("ERROR ADD ALAT: $e");
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Gagal menambahkan alat: $e")));
+      debugPrint("ERROR EDIT ALAT: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gagal mengedit alat")),
+      );
     } finally {
       setState(() => isLoading = false);
     }
   }
 
-  /// BUILD UI
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,7 +174,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  "Tambah Alat",
+                  "Edit Alat",
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -202,7 +193,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// FORM CARD
+  /// ================= FORM CARD =================
   Widget _formCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -234,7 +225,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
           const SizedBox(height: 14),
           _input(
             "Stok",
-            "Masukkan harga",
+            "Masukkan stok",
             controller: stokController,
             keyboard: TextInputType.number,
           ),
@@ -251,28 +242,26 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
+  /// ================= IMAGE =================
   Widget _buildImagePreview() {
-    // ✅ WEB Preview
     if (kIsWeb && selectedWebImage != null) {
       return Image.memory(selectedWebImage!, fit: BoxFit.cover);
     }
-
-    // ✅ MOBILE/DESKTOP Preview
     if (!kIsWeb && selectedImage != null) {
       return Image.file(selectedImage!, fit: BoxFit.cover);
     }
+    if (imageUrlLama != null) {
+      return Image.network(imageUrlLama!, fit: BoxFit.cover);
+    }
 
-    // ✅ Default jika belum pilih gambar
     return Center(
       child: Text(
         "Belum ada gambar",
         style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-        textAlign: TextAlign.center,
       ),
     );
   }
 
-  /// IMAGE PICKER WIDGET
   Widget _imagePicker() {
     return Column(
       children: [
@@ -284,16 +273,12 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             border: Border.all(color: Colors.grey.shade400, width: 1.5),
             color: Colors.grey.shade100,
           ),
-
-          /// PREVIEW GAMBAR
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: _buildImagePreview(),
           ),
         ),
-
         const SizedBox(height: 10),
-
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF6C6D7A),
@@ -303,11 +288,10 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
           ),
           onPressed: pickImage,
           child: Text(
-            "Tambahkan Gambar",
+            "Ganti Gambar",
             style: GoogleFonts.poppins(
               fontSize: 13,
               color: Colors.white,
-              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -315,7 +299,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// DROPDOWN KATEGORI
+  /// ================= KATEGORI =================
   Widget _kategoriDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,10 +319,6 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             isExpanded: true,
             underline: const SizedBox(),
             value: selectedKategori,
-            hint: Text(
-              "Pilih kategori",
-              style: GoogleFonts.poppins(fontSize: 13),
-            ),
             items: kategoriList.map((kategori) {
               return DropdownMenuItem<Map<String, dynamic>>(
                 value: kategori,
@@ -359,12 +339,12 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// INPUT FIELD
+  /// ================= INPUT =================
   Widget _input(
     String label,
     String hint, {
-    TextInputType keyboard = TextInputType.text,
     TextEditingController? controller,
+    TextInputType keyboard = TextInputType.text,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,10 +360,8 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.poppins(fontSize: 13),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             enabledBorder: _border,
             focusedBorder: _border,
           ),
@@ -392,7 +370,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// ACTION BUTTONS
+  /// ================= BUTTONS =================
   Widget _actionButtons() {
     return Row(
       children: [
@@ -404,9 +382,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
               ),
               side: BorderSide(color: Colors.grey.shade400),
             ),
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
             child: Text("Batal", style: GoogleFonts.poppins(fontSize: 13)),
           ),
         ),
@@ -419,7 +395,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-            onPressed: isLoading ? null : submitForm,
+            onPressed: isLoading ? null : submitEdit,
             child: isLoading
                 ? const CircularProgressIndicator(
                     color: Colors.white,
@@ -441,9 +417,9 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
   @override
   void dispose() {
     namaController.dispose();
+    hargaController.dispose();
     stokController.dispose();
     spesifikasiController.dispose();
-    hargaController.dispose();
     super.dispose();
   }
 }

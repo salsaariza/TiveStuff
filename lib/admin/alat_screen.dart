@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:tivestuff1/admin/edit_alat_screen.dart';
 import '../models/alat_models.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
-
 import 'add_alat.dart';
 import 'add_kategori.dart';
 
@@ -70,19 +69,21 @@ class _AlatScreenState extends State<AlatScreen> {
 
       setState(() {
         alatList = data;
-
         filteredList = selectedKategori == null
             ? data
             : data
-                .where((alat) =>
-                    alat.idKategori == selectedKategori!.id)
+                .where(
+                  (alat) => alat.idKategori == selectedKategori!.id,
+                )
                 .toList();
       });
     } catch (e) {
       debugPrint("ERROR FETCH ALAT: $e");
     }
 
-    setState(() => isLoading = false);
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   /// ================= FETCH KATEGORI =================
@@ -98,9 +99,7 @@ class _AlatScreenState extends State<AlatScreen> {
           .map((e) => KategoriModel.fromMap(e))
           .toList();
 
-      setState(() {
-        kategoriList = data;
-      });
+      setState(() => kategoriList = data);
     } catch (e) {
       debugPrint("ERROR FETCH KATEGORI: $e");
     }
@@ -110,7 +109,6 @@ class _AlatScreenState extends State<AlatScreen> {
   void filterKategori(KategoriModel? kategori) {
     setState(() {
       selectedKategori = kategori;
-
       filteredList = kategori == null
           ? alatList
           : alatList
@@ -124,9 +122,8 @@ class _AlatScreenState extends State<AlatScreen> {
     setState(() {
       filteredList = alatList
           .where(
-            (alat) => alat.nama
-                .toLowerCase()
-                .contains(keyword.toLowerCase()),
+            (alat) =>
+                alat.nama.toLowerCase().contains(keyword.toLowerCase()),
           )
           .toList();
     });
@@ -135,12 +132,14 @@ class _AlatScreenState extends State<AlatScreen> {
   /// ================= DELETE =================
   Future<void> deleteAlat(int id) async {
     try {
-      await supabase.from('alat').update({
-        'delete_at': DateTime.now().toIso8601String(),
-      }).eq('id_alat', id);
+      await supabase
+          .from('alat')
+          .update({'delete_at': DateTime.now().toIso8601String()})
+          .eq('id_alat', id);
 
-      fetchAlat();
+      await fetchAlat();
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Alat berhasil dihapus")),
       );
@@ -149,18 +148,43 @@ class _AlatScreenState extends State<AlatScreen> {
     }
   }
 
-  /// ================= EDIT =================
-  Future<void> editAlat(AlatModel alat) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TambahAlatScreen(alat: alat),
+  /// ================= KONFIRMASI DELETE =================
+  void confirmDelete(AlatModel alat) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(
+          "Hapus Alat",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          "Apakah kamu yakin ingin menghapus alat '${alat.nama}'?",
+          style: GoogleFonts.poppins(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Batal",
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              deleteAlat(alat.id);
+            },
+            child: Text(
+              "Hapus",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
-
-    if (result != null) {
-      fetchAlat();
-    }
   }
 
   /// ================= UI =================
@@ -169,21 +193,17 @@ class _AlatScreenState extends State<AlatScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
 
-      /// FLOATING BUTTON TAMBAH ALAT
+      /// FLOATING BUTTON
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF6C6D7A),
         child: const Icon(Icons.build, color: Colors.white),
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const TambahAlatScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const TambahAlatScreen()),
           );
 
-          if (result != null) {
-            fetchAlat();
-          }
+          if (result != null) fetchAlat();
         },
       ),
 
@@ -192,7 +212,6 @@ class _AlatScreenState extends State<AlatScreen> {
         currentIndex: 1,
         onTap: (index) {
           if (index == 1) return;
-
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/dashboard');
           } else if (index == 2) {
@@ -220,7 +239,7 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= SEARCH + FILTER =================
+  /// ================= SEARCH =================
   Widget _searchSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -235,149 +254,24 @@ class _AlatScreenState extends State<AlatScreen> {
             ),
           ),
           const SizedBox(height: 10),
-
-          /// SEARCH BAR
           TextField(
             onChanged: searchAlat,
             decoration: InputDecoration(
               hintText: "Cari alat",
-              hintStyle: GoogleFonts.poppins(fontSize: 13),
               suffixIcon: const Icon(Icons.search),
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              enabledBorder: OutlineInputBorder(
+              border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 1.5,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFF6C6D7A),
-                  width: 2,
-                ),
               ),
             ),
-          ),
-
-          const SizedBox(height: 14),
-
-          /// FILTER + TAMBAH KATEGORI
-          Row(
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: _showCategoryDropdown,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6C6D7A),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        selectedKategori?.nama ?? "Semua",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              /// TAMBAH KATEGORI
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const KategoriScreen(),
-                    ),
-                  ).then((_) => fetchKategori());
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF6C6D7A),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  /// ================= DROPDOWN KATEGORI =================
-  void _showCategoryDropdown() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(
-                  "Semua",
-                  style: GoogleFonts.poppins(fontSize: 14),
-                ),
-                onTap: () {
-                  filterKategori(null);
-                  Navigator.pop(context);
-                },
-              ),
-              ...kategoriList.map(
-                (kategori) => ListTile(
-                  title: Text(
-                    kategori.nama,
-                    style: GoogleFonts.poppins(fontSize: 14),
-                  ),
-                  onTap: () {
-                    filterKategori(kategori);
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// ================= GRID ALAT =================
+  /// ================= GRID =================
   Widget _gridAlat() {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -402,95 +296,78 @@ class _AlatScreenState extends State<AlatScreen> {
           crossAxisSpacing: 12,
           childAspectRatio: 0.78,
         ),
-        itemBuilder: (context, index) {
-          return _alatCard(filteredList[index]);
-        },
+        itemBuilder: (_, index) => _alatCard(filteredList[index]),
       ),
     );
   }
 
-  /// ================= CARD ALAT =================
+  /// ================= CARD =================
   Widget _alatCard(AlatModel alat) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade400, width: 1.5),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// GAMBAR
-            Container(
-              height: 100,
-              margin: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(12),
-                image: alat.gambar != null
-                    ? DecorationImage(
-                        image: NetworkImage(alat.gambar!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade400, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 100,
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(12),
+              image: alat.gambar != null
+                  ? DecorationImage(
+                      image: NetworkImage(alat.gambar!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              alat.nama,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
-
-            /// NAMA
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                alat.nama,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              "Stok : ${alat.stok}",
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey),
             ),
-
-            const SizedBox(height: 6),
-
-            /// STOK
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                "Stok : ${alat.stok}",
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-
-            const Spacer(),
-
-            /// BUTTON EDIT + DELETE
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
-              child: Row(
-                children: [
-                  InkWell(
-                    onTap: () => editAlat(alat),
-                    child: const Icon(Icons.edit, size: 20),
+          ),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditAlatScreen(alat: alat),
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  InkWell(
-                    onTap: () => deleteAlat(alat.id),
-                    child: const Icon(Icons.delete, size: 20),
-                  ),
-                ],
-              ),
+                  child: const Icon(Icons.edit, size: 20),
+                ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: () => confirmDelete(alat),
+                  child: const Icon(Icons.delete, size: 20),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
