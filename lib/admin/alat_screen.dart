@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tivestuff1/admin/edit_alat_screen.dart';
+
 import '../models/alat_models.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
@@ -72,18 +73,14 @@ class _AlatScreenState extends State<AlatScreen> {
         filteredList = selectedKategori == null
             ? data
             : data
-                .where(
-                  (alat) => alat.idKategori == selectedKategori!.id,
-                )
+                .where((alat) => alat.idKategori == selectedKategori!.id)
                 .toList();
       });
     } catch (e) {
       debugPrint("ERROR FETCH ALAT: $e");
     }
 
-    if (mounted) {
-      setState(() => isLoading = false);
-    }
+    if (mounted) setState(() => isLoading = false);
   }
 
   /// ================= FETCH KATEGORI =================
@@ -105,7 +102,7 @@ class _AlatScreenState extends State<AlatScreen> {
     }
   }
 
-  /// ================= FILTER =================
+  /// ================= FILTER KATEGORI =================
   void filterKategori(KategoriModel? kategori) {
     setState(() {
       selectedKategori = kategori;
@@ -164,23 +161,15 @@ class _AlatScreenState extends State<AlatScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Batal",
-              style: GoogleFonts.poppins(color: Colors.grey),
-            ),
+            child: Text("Batal", style: GoogleFonts.poppins()),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(context);
               deleteAlat(alat.id);
             },
-            child: Text(
-              "Hapus",
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
+            child: Text("Hapus", style: GoogleFonts.poppins()),
           ),
         ],
       ),
@@ -202,7 +191,6 @@ class _AlatScreenState extends State<AlatScreen> {
             context,
             MaterialPageRoute(builder: (_) => const TambahAlatScreen()),
           );
-
           if (result != null) fetchAlat();
         },
       ),
@@ -231,6 +219,8 @@ class _AlatScreenState extends State<AlatScreen> {
             const Header(),
             const SizedBox(height: 16),
             _searchSection(),
+            const SizedBox(height: 10),
+            _kategoriSection(),
             const SizedBox(height: 12),
             Expanded(child: _gridAlat()),
           ],
@@ -246,13 +236,9 @@ class _AlatScreenState extends State<AlatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Alat",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text("Alat",
+              style: GoogleFonts.poppins(
+                  fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
           TextField(
             onChanged: searchAlat,
@@ -261,9 +247,72 @@ class _AlatScreenState extends State<AlatScreen> {
               suffixIcon: const Icon(Icons.search),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ================= KATEGORI =================
+  Widget _kategoriSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.shade400),
               ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<KategoriModel?>(
+                  value: selectedKategori,
+                  hint: Text("Kategori",
+                      style: GoogleFonts.poppins(fontSize: 14)),
+                  isExpanded: true,
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text("Semua Kategori",
+                          style: GoogleFonts.poppins()),
+                    ),
+                    ...kategoriList.map(
+                      (k) => DropdownMenuItem(
+                        value: k,
+                        child:
+                            Text(k.nama, style: GoogleFonts.poppins()),
+                      ),
+                    ),
+                  ],
+                  onChanged: filterKategori,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          InkWell(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const KategoriScreen(),
+                ),
+              );
+              if (result != null) fetchKategori();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6C6D7A),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
         ],
@@ -279,10 +328,8 @@ class _AlatScreenState extends State<AlatScreen> {
 
     if (filteredList.isEmpty) {
       return Center(
-        child: Text(
-          "Data alat kosong",
-          style: GoogleFonts.poppins(color: Colors.grey),
-        ),
+        child: Text("Data alat kosong",
+            style: GoogleFonts.poppins(color: Colors.grey)),
       );
     }
 
@@ -296,7 +343,7 @@ class _AlatScreenState extends State<AlatScreen> {
           crossAxisSpacing: 12,
           childAspectRatio: 0.78,
         ),
-        itemBuilder: (_, index) => _alatCard(filteredList[index]),
+        itemBuilder: (_, i) => _alatCard(filteredList[i]),
       ),
     );
   }
@@ -328,22 +375,17 @@ class _AlatScreenState extends State<AlatScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              alat.nama,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: Text(alat.nama,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                    fontSize: 15, fontWeight: FontWeight.w600)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              "Stok : ${alat.stok}",
-              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey),
-            ),
+            child: Text("Stok : ${alat.stok}",
+                style: GoogleFonts.poppins(
+                    fontSize: 13, color: Colors.grey)),
           ),
           const Spacer(),
           Padding(
@@ -354,8 +396,7 @@ class _AlatScreenState extends State<AlatScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => EditAlatScreen(alat: alat),
-                    ),
+                        builder: (_) => EditAlatScreen(alat: alat)),
                   ),
                   child: const Icon(Icons.edit, size: 20),
                 ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
 
@@ -11,17 +13,77 @@ class KategoriScreen extends StatefulWidget {
 }
 
 class _KategoriScreenState extends State<KategoriScreen> {
-  final List<String> categories = [
-    "Kelistrikan",
-    "Diagnostik",
-  ];
+  final supabase = Supabase.instance.client;
 
   final TextEditingController _kategoriController = TextEditingController();
+
+  bool isLoading = true;
+
+  List<Map<String, dynamic>> kategoriList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchKategori();
+  }
 
   @override
   void dispose() {
     _kategoriController.dispose();
     super.dispose();
+  }
+
+  /// ================= FETCH =================
+  Future<void> fetchKategori() async {
+    setState(() => isLoading = true);
+
+    try {
+      final response = await supabase
+          .from('kategori')
+          .select()
+          .filter('delete_at', 'is', null)
+          .order('nama_kategori');
+
+      setState(() {
+        kategoriList = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      debugPrint("ERROR FETCH KATEGORI: $e");
+    }
+
+    if (mounted) setState(() => isLoading = false);
+  }
+
+  /// ================= ADD =================
+  Future<void> addKategori(String nama) async {
+    await supabase.from('kategori').insert({
+      'nama_kategori': nama,
+    });
+    await fetchKategori();
+    Navigator.pop(context);
+    Navigator.pop(context, true); // balik ke AlatScreen
+  }
+
+  /// ================= UPDATE =================
+  Future<void> updateKategori(int id, String nama) async {
+    await supabase
+        .from('kategori')
+        .update({'nama_kategori': nama})
+        .eq('id_kategori', id);
+
+    await fetchKategori();
+    Navigator.pop(context);
+    Navigator.pop(context, true);
+  }
+
+  /// ================= DELETE (SOFT) =================
+  Future<void> deleteKategori(int id) async {
+    await supabase
+        .from('kategori')
+        .update({'delete_at': DateTime.now().toIso8601String()})
+        .eq('id_kategori', id);
+
+    await fetchKategori();
   }
 
   @override
@@ -48,7 +110,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
             const Header(),
             const SizedBox(height: 20),
 
-            // TITLE
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
@@ -62,7 +123,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
             const SizedBox(height: 12),
 
-            // TAMBAH KATEGORI
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: OutlinedButton(
@@ -83,15 +143,17 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
             const SizedBox(height: 16),
 
-            // LIST
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  return _categoryCard(categories[index], index);
-                },
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: kategoriList.length,
+                      itemBuilder: (context, index) {
+                        final kategori = kategoriList[index];
+                        return _categoryCard(kategori);
+                      },
+                    ),
             ),
           ],
         ),
@@ -99,8 +161,8 @@ class _KategoriScreenState extends State<KategoriScreen> {
     );
   }
 
-  // ================= CARD =================
-  Widget _categoryCard(String title, int index) {
+  /// ================= CARD =================
+  Widget _categoryCard(Map<String, dynamic> kategori) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -119,7 +181,7 @@ class _KategoriScreenState extends State<KategoriScreen> {
         children: [
           Expanded(
             child: Text(
-              title,
+              kategori['nama_kategori'],
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -127,33 +189,30 @@ class _KategoriScreenState extends State<KategoriScreen> {
             ),
           ),
 
-          // EDIT
           IconButton(
             icon: const Icon(Icons.edit, size: 18),
             onPressed: () => _showKategoriDialog(
               isEdit: true,
-              index: index,
-              initialValue: title,
+              kategori: kategori,
             ),
           ),
 
-          // DELETE
           IconButton(
             icon: const Icon(Icons.delete, size: 18),
-            onPressed: () => _confirmDelete(index),
+            onPressed: () => _confirmDelete(kategori['id_kategori']),
           ),
         ],
       ),
     );
   }
 
-  // ================= ADD / EDIT DIALOG =================
+  /// ================= ADD / EDIT =================
   void _showKategoriDialog({
     bool isEdit = false,
-    int? index,
-    String initialValue = "",
+    Map<String, dynamic>? kategori,
   }) {
-    _kategoriController.text = initialValue;
+    _kategoriController.text =
+        isEdit ? kategori!['nama_kategori'] : "";
 
     showDialog(
       context: context,
@@ -171,7 +230,7 @@ class _KategoriScreenState extends State<KategoriScreen> {
               children: [
                 Center(
                   child: Text(
-                    "Tambah Kategori",
+                    isEdit ? "Edit Kategori" : "Tambah Kategori",
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -180,10 +239,8 @@ class _KategoriScreenState extends State<KategoriScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                Text(
-                  "Nama Kategori",
-                  style: GoogleFonts.poppins(fontSize: 12),
-                ),
+                Text("Nama Kategori",
+                    style: GoogleFonts.poppins(fontSize: 12)),
                 const SizedBox(height: 6),
 
                 TextField(
@@ -192,9 +249,7 @@ class _KategoriScreenState extends State<KategoriScreen> {
                     hintText: "Masukkan Kategori",
                     hintStyle: GoogleFonts.poppins(fontSize: 12),
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
+                        horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -207,13 +262,9 @@ class _KategoriScreenState extends State<KategoriScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text(
-                          "Batal",
-                          style: GoogleFonts.poppins(fontSize: 12),
-                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("Batal",
+                            style: GoogleFonts.poppins(fontSize: 12)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -225,23 +276,19 @@ class _KategoriScreenState extends State<KategoriScreen> {
                         onPressed: () {
                           if (_kategoriController.text.isEmpty) return;
 
-                          setState(() {
-                            if (isEdit && index != null) {
-                              categories[index] =
-                                  _kategoriController.text;
-                            } else {
-                              categories.add(_kategoriController.text);
-                            }
-                          });
-
-                          Navigator.pop(context);
+                          if (isEdit) {
+                            updateKategori(
+                              kategori!['id_kategori'],
+                              _kategoriController.text,
+                            );
+                          } else {
+                            addKategori(_kategoriController.text);
+                          }
                         },
                         child: Text(
                           "Konfirmasi",
                           style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
+                              fontSize: 12, color: Colors.white),
                         ),
                       ),
                     ),
@@ -255,39 +302,29 @@ class _KategoriScreenState extends State<KategoriScreen> {
     );
   }
 
-  // ================= DELETE CONFIRM =================
-  void _confirmDelete(int index) {
+  /// ================= DELETE =================
+  void _confirmDelete(int id) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(
-            "Hapus Kategori",
-            style: GoogleFonts.poppins(fontSize: 16),
-          ),
-          content: Text(
-            "Yakin ingin menghapus kategori ini?",
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
+          title:
+              Text("Hapus Kategori", style: GoogleFonts.poppins()),
+          content: Text("Yakin ingin menghapus kategori ini?",
+              style: GoogleFonts.poppins(fontSize: 13)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                "Batal",
-                style: GoogleFonts.poppins(),
-              ),
+              child: Text("Batal", style: GoogleFonts.poppins()),
             ),
             TextButton(
               onPressed: () {
-                setState(() {
-                  categories.removeAt(index);
-                });
+                deleteKategori(id);
                 Navigator.pop(context);
               },
-              child: Text(
-                "Hapus",
-                style: GoogleFonts.poppins(color: Colors.red),
-              ),
+              child: Text("Hapus",
+                  style:
+                      GoogleFonts.poppins(color: Colors.red)),
             ),
           ],
         );
