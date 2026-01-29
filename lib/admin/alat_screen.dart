@@ -128,22 +128,23 @@ class _AlatScreenState extends State<AlatScreen> {
 
   /// ================= DELETE =================
   Future<void> deleteAlat(int id) async {
-    try {
-      await supabase
-          .from('alat')
-          .update({'delete_at': DateTime.now().toIso8601String()})
-          .eq('id_alat', id);
+  try {
+    await supabase
+        .from('alat')
+        .delete() //
+        .eq('id_alat', id);
 
-      await fetchAlat();
+    await fetchAlat();
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Alat berhasil dihapus")),
-      );
-    } catch (e) {
-      debugPrint("ERROR DELETE ALAT: $e");
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Alat berhasil dihapus permanen")),
+    );
+  } catch (e) {
+    debugPrint("ERROR DELETE ALAT: $e");
   }
+}
+
 
   /// ================= KONFIRMASI DELETE =================
   void confirmDelete(AlatModel alat) {

@@ -234,7 +234,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
           const SizedBox(height: 14),
           _input(
             "Stok",
-            "Masukkan harga",
+            "Masukkan stok",
             controller: stokController,
             keyboard: TextInputType.number,
           ),

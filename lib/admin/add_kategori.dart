@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../widgets/header_back.dart';
-import '../widgets/nav_admin.dart';
 
 class KategoriScreen extends StatefulWidget {
   const KategoriScreen({super.key});
@@ -76,31 +75,25 @@ class _KategoriScreenState extends State<KategoriScreen> {
     Navigator.pop(context, true);
   }
 
-  /// ================= DELETE (SOFT) =================
+  /// ================= DELETE  =================
   Future<void> deleteKategori(int id) async {
+  try {
     await supabase
         .from('kategori')
-        .update({'delete_at': DateTime.now().toIso8601String()})
+        .delete() 
         .eq('id_kategori', id);
 
     await fetchKategori();
+  } catch (e) {
+    debugPrint("ERROR DELETE KATEGORI: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
-
-      // ================= NAVBAR =================
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: 1,
-        onTap: (index) {
-          if (index == 1) return;
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          }
-        },
-      ),
 
       // ================= BODY =================
       body: SafeArea(
