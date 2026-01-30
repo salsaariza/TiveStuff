@@ -240,7 +240,7 @@ class _AlatScreenState extends State<AlatScreen> {
           Text("Alat",
               style: GoogleFonts.poppins(
                   fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
           TextField(
             onChanged: searchAlat,
             decoration: InputDecoration(
@@ -386,7 +386,7 @@ class _AlatScreenState extends State<AlatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text("Stok : ${alat.stok}",
                 style: GoogleFonts.poppins(
-                    fontSize: 13, color: Colors.grey)),
+                    fontSize: 15, color: Colors.grey)),
           ),
           const Spacer(),
           Padding(

@@ -16,7 +16,11 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   final supabase = Supabase.instance.client;
 
   List users = [];
+  List filteredUsers = []; 
   bool isLoading = true;
+
+  final TextEditingController searchController =
+      TextEditingController(); 
 
   // ================== LOAD USERS ==================
   Future<void> fetchUsers() async {
@@ -29,7 +33,30 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
     setState(() {
       users = response;
+      filteredUsers = response; 
       isLoading = false;
+    });
+  }
+
+  // ================== SEARCH USER ==================
+  void searchUser(String keyword) {
+    if (keyword.isEmpty) {
+      setState(() {
+        filteredUsers = users;
+      });
+      return;
+    }
+
+    final result = users.where((user) {
+      final username = user["username"].toString().toLowerCase();
+      final email = user["email"].toString().toLowerCase();
+
+      return username.contains(keyword.toLowerCase()) ||
+          email.contains(keyword.toLowerCase());
+    }).toList();
+
+    setState(() {
+      filteredUsers = result;
     });
   }
 
@@ -37,9 +64,9 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   Future<void> deleteUser(String idUser) async {
     await supabase.from('users').delete().eq('id_user', idUser);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("User berhasil dihapus")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("User berhasil dihapus")),
+    );
 
     fetchUsers();
   }
@@ -97,13 +124,12 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   }) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 30), 
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ===== TITLE =====
             Text(
               title,
               style: GoogleFonts.poppins(
@@ -111,10 +137,9 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // ===== INPUT NAMA =====
+            // INPUT NAMA
             TextField(
               controller: nameController,
               decoration: InputDecoration(
@@ -132,7 +157,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
             const SizedBox(height: 14),
 
-            // ===== INPUT EMAIL =====
+            // INPUT EMAIL
             TextField(
               controller: emailController,
               decoration: InputDecoration(
@@ -150,7 +175,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
             const SizedBox(height: 22),
 
-            // ===== BUTTON =====
+            // BUTTON
             Row(
               children: [
                 Expanded(
@@ -305,6 +330,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           children: [
             const Header(),
             const SizedBox(height: 20),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
@@ -315,10 +341,14 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 12),
+
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
+                onChanged: (value) => setState(() => searchUser(value)),
                 decoration: InputDecoration(
                   hintText: "Cari Pengguna",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
@@ -331,29 +361,28 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: Colors.grey.shade400,
-                      width: 1.5,
-                    ),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade400, width: 1.5),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF6C6D7A),
-                      width: 2,
-                    ),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF6C6D7A), width: 2),
                   ),
                 ),
               ),
             ),
+
+            const SizedBox(height: 16),
+
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: users.length,
+                      itemCount: filteredUsers.length,
                       itemBuilder: (context, index) {
-                        final user = users[index];
+                        final user = filteredUsers[index];
                         return _userCard(user);
                       },
                     ),
