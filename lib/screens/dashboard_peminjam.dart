@@ -2,10 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tivestuff1/widgets/header_peminjam.dart';
 import 'package:tivestuff1/widgets/nav_peminjam.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class DashboardPeminjam extends StatelessWidget {
+class DashboardPeminjam extends StatefulWidget {
   const DashboardPeminjam({super.key});
 
+  @override
+  State<DashboardPeminjam> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardPeminjam> {
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  // ================= DATA =================
+  int totalUser = 0;
+  int totalAlat = 0;
+  int alatTersedia = 0;
+  int alatDipinjam = 0;
+
+  List<Map<String, dynamic>> riwayat = [];
+  bool isLoading = true;
+
+  // ================= RESPONSIVE FONT =================
   double rf(BuildContext context, double base) {
     final width = MediaQuery.of(context).size.width;
     if (width >= 1024) return base + 4;
@@ -13,6 +31,70 @@ class DashboardPeminjam extends StatelessWidget {
     return base;
   }
 
+  @override
+  void initState() {
+    super.initState();
+    fetchDashboard();
+  }
+
+  // ================= FETCH DASHBOARD =================
+  Future<void> fetchDashboard() async {
+    try {
+      // ================= USERS =================
+      final usersRes = await supabase.from('users').select('id_user');
+      final List users = List.from(usersRes);
+
+      // ================= ALAT =================
+      final alatRes = await supabase.from('alat').select('id_alat');
+      final List alat = List.from(alatRes);
+
+      // ================= ALAT TERSEDIA =================
+      final tersediaRes = await supabase
+          .from('alat')
+          .select('id_alat')
+          .eq('ketersediaan', 'ada');
+      final List tersedia = List.from(tersediaRes);
+
+      // ================= ALAT DIPINJAM =================
+      final dipinjamRes = await supabase
+          .from('peminjaman')
+          .select('id_peminjaman')
+          .or(
+            'status_peminjaman.eq.menunggu,'
+            'status_peminjaman.eq.disetujui,'
+            'status_peminjaman.eq.ditolak',
+          );
+      final List dipinjam = List.from(dipinjamRes);
+
+      // ================= RIWAYAT =================
+      final historyRes = await supabase
+          .from('peminjaman')
+          .select('id_peminjaman, created_at')
+          .order('created_at', ascending: false)
+          .limit(5);
+
+      final List<Map<String, dynamic>> history =
+          List<Map<String, dynamic>>.from(historyRes);
+
+      if (!mounted) return;
+
+      setState(() {
+        totalUser = users.length;
+        totalAlat = alat.length;
+        alatTersedia = tersedia.length;
+        alatDipinjam = dipinjam.length;
+        riwayat = history;
+        isLoading = false;
+      });
+    } catch (e, s) {
+      debugPrint('ERROR DASHBOARD: $e');
+      debugPrint('STACKTRACE: $s');
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,25 +120,29 @@ class DashboardPeminjam extends StatelessWidget {
         },
       ),
 
+
+
       // ================= BODY =================
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const HeaderPeminjam(),
-              const SizedBox(height: 20),
-              _dashboardTitle(context),
-              const SizedBox(height: 12),
-              _statsGrid(context),
-              const SizedBox(height: 24),
-              _riwayatTitle(context),
-              const SizedBox(height: 12),
-              _riwayatList(context),
-            ],
-          ),
-        ),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const HeaderPeminjam(),
+                    const SizedBox(height: 20),
+                    _dashboardTitle(context),
+                    const SizedBox(height: 12),
+                    _statsGrid(context),
+                    const SizedBox(height: 24),
+                    _riwayatTitle(context),
+                    const SizedBox(height: 12),
+                    _riwayatList(context),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -79,7 +165,6 @@ class DashboardPeminjam extends StatelessWidget {
   Widget _statsGrid(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final crossAxisCount = width >= 600 ? 4 : 2;
-    final aspectRatio = width < 360 ? 1.2 : 1.4;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -89,12 +174,12 @@ class DashboardPeminjam extends StatelessWidget {
         crossAxisCount: crossAxisCount,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: aspectRatio,
+        childAspectRatio: 1.4,
         children: [
-          _statCard(context, "15", "PENGGUNA AKTIF"),
-          _statCard(context, "10", "JUMLAH ALAT"),
-          _statCard(context, "15", "ALAT TERSEDIA"),
-          _statCard(context, "15", "ALAT DIPINJAM"),
+          _statCard(context, totalUser.toString(), "PENGGUNA AKTIF"),
+          _statCard(context, totalAlat.toString(), "JUMLAH ALAT"),
+          _statCard(context, alatTersedia.toString(), "ALAT TERSEDIA"),
+          _statCard(context, alatDipinjam.toString(), "ALAT DIPINJAM"),
         ],
       ),
     );
@@ -107,10 +192,7 @@ class DashboardPeminjam extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade400,
-          width: 2,
-        ),
+        border: Border.all(color: Colors.grey.shade400, width: 2),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -126,8 +208,6 @@ class DashboardPeminjam extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               fontSize: rf(context, 14),
               color: Colors.grey.shade600,
@@ -153,19 +233,30 @@ class DashboardPeminjam extends StatelessWidget {
   }
 
   Widget _riwayatList(BuildContext context) {
+    if (riwayat.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Text("Belum ada riwayat peminjaman"),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
-        children: [
-          _riwayatItem(context, "Peminjaman 03"),
-          _riwayatItem(context, "Peminjaman 02"),
-          _riwayatItem(context, "Peminjaman 01"),
-        ],
+        children: riwayat.map((item) {
+          final date = DateTime.parse(item['created_at']);
+          return _riwayatItem(
+            context,
+            "Peminjaman #${item['id_peminjaman']}",
+            "${date.hour}:${date.minute.toString().padLeft(2, '0')} | "
+                "${date.day}-${date.month}-${date.year}",
+          );
+        }).toList(),
       ),
     );
   }
 
-  Widget _riwayatItem(BuildContext context, String title) {
+  Widget _riwayatItem(BuildContext context, String title, String tanggal) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -183,15 +274,13 @@ class DashboardPeminjam extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     fontSize: rf(context, 14),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
-                  "07.15 | 15 Oktober 2025",
+                  tanggal,
                   style: GoogleFonts.poppins(
                     fontSize: rf(context, 12),
                     color: Colors.grey,

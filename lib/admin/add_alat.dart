@@ -88,84 +88,97 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
   /// SUBMIT FORM KE SUPABASE
   Future<void> submitForm() async {
-    if (namaController.text.isEmpty ||
-        hargaController.text.isEmpty ||
-        selectedKategori == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Nama, Kategori, dan Harga wajib diisi")),
-      );
-      return;
-    }
-
-    setState(() => isLoading = true);
-
-    try {
-      String? imageUrl;
-
-      /// =============================
-      /// UPLOAD GAMBAR (JIKA ADA)
-      /// =============================
-      if ((kIsWeb && selectedWebImage != null) ||
-          (!kIsWeb && selectedImage != null)) {
-        final fileName = "alat_${DateTime.now().millisecondsSinceEpoch}.png";
-
-        if (kIsWeb) {
-          // ✅ WEB Upload
-          await supabase.storage
-              .from('alat_image')
-              .uploadBinary(
-                fileName,
-                selectedWebImage!,
-                fileOptions: const FileOptions(contentType: "image/png"),
-              );
-        } else {
-          // ✅ MOBILE/DESKTOP Upload
-          await supabase.storage
-              .from('alat_image')
-              .upload(
-                fileName,
-                selectedImage!,
-                fileOptions: const FileOptions(contentType: "image/png"),
-              );
-        }
-
-        // ✅ Ambil URL publik
-        imageUrl = supabase.storage.from('alat_image').getPublicUrl(fileName);
-
-        debugPrint("URL gambar berhasil: $imageUrl");
-      }
-
-      /// =============================
-      /// INSERT DATA KE DATABASE
-      /// =============================
-      final response = await supabase.from('alat').insert({
-        'nama_alat': namaController.text,
-        'id_kategori': selectedKategori!['id_kategori'],
-        'harga_alat': double.tryParse(hargaController.text) ?? 0,
-        'spesifikasi_alat': spesifikasiController.text,
-        'stok': int.tryParse(stokController.text) ?? 0,
-        'gambar_alat': imageUrl,
-      }).select();
-
-      /// =============================
-      /// BERHASIL
-      /// =============================
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Alat berhasil ditambahkan")),
-      );
-
-      // ✅ Kembali sambil kirim data baru
-      Navigator.pop(context, response[0]);
-    } catch (e) {
-      debugPrint("ERROR ADD ALAT: $e");
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Gagal menambahkan alat: $e")));
-    } finally {
-      setState(() => isLoading = false);
-    }
+  // =========================
+  // VALIDASI WAJIB ISI
+  // =========================
+  if (namaController.text.trim().isEmpty ||
+      hargaController.text.trim().isEmpty ||
+      stokController.text.trim().isEmpty ||
+      spesifikasiController.text.trim().isEmpty ||
+      selectedKategori == null ||
+      ((kIsWeb && selectedWebImage == null) ||
+          (!kIsWeb && selectedImage == null))) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("SEMUA DATA WAJIB DIISI, TERMASUK GAMBAR"),
+      ),
+    );
+    return;
   }
+
+  // =========================
+  // VALIDASI ANGKA
+  // =========================
+  final harga = double.tryParse(hargaController.text);
+  final stok = int.tryParse(stokController.text);
+
+  if (harga == null || harga <= 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Harga harus berupa angka valid")),
+    );
+    return;
+  }
+
+  if (stok == null || stok < 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Stok harus berupa angka valid")),
+    );
+    return;
+  }
+
+  setState(() => isLoading = true);
+
+  try {
+    String? imageUrl;
+
+    // =========================
+    // UPLOAD GAMBAR
+    // =========================
+    final fileName = "alat_${DateTime.now().millisecondsSinceEpoch}.png";
+
+    if (kIsWeb) {
+      await supabase.storage.from('alat_image').uploadBinary(
+            fileName,
+            selectedWebImage!,
+            fileOptions: const FileOptions(contentType: "image/png"),
+          );
+    } else {
+      await supabase.storage.from('alat_image').upload(
+            fileName,
+            selectedImage!,
+            fileOptions: const FileOptions(contentType: "image/png"),
+          );
+    }
+
+    imageUrl = supabase.storage.from('alat_image').getPublicUrl(fileName);
+
+    // =========================
+    // INSERT KE DATABASE
+    // =========================
+    final response = await supabase.from('alat').insert({
+      'nama_alat': namaController.text.trim(),
+      'id_kategori': selectedKategori!['id_kategori'],
+      'harga_alat': harga,
+      'stok': stok,
+      'spesifikasi_alat': spesifikasiController.text.trim(),
+      'gambar_alat': imageUrl,
+    }).select();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Alat berhasil ditambahkan")),
+    );
+
+    Navigator.pop(context, response[0]);
+  } catch (e) {
+    debugPrint("ERROR ADD ALAT: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Gagal menambahkan alat")),
+    );
+  } finally {
+    setState(() => isLoading = false);
+  }
+}
+
 
   /// BUILD UI
   @override
@@ -252,17 +265,14 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
   }
 
   Widget _buildImagePreview() {
-    // ✅ WEB Preview
     if (kIsWeb && selectedWebImage != null) {
       return Image.memory(selectedWebImage!, fit: BoxFit.cover);
     }
 
-    // ✅ MOBILE/DESKTOP Preview
     if (!kIsWeb && selectedImage != null) {
       return Image.file(selectedImage!, fit: BoxFit.cover);
     }
 
-    // ✅ Default jika belum pilih gambar
     return Center(
       child: Text(
         "Belum ada gambar",

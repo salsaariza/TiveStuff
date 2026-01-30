@@ -16,11 +16,10 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   final supabase = Supabase.instance.client;
 
   List users = [];
-  List filteredUsers = []; 
+  List filteredUsers = [];
   bool isLoading = true;
 
-  final TextEditingController searchController =
-      TextEditingController(); 
+  final TextEditingController searchController = TextEditingController();
 
   // ================== LOAD USERS ==================
   Future<void> fetchUsers() async {
@@ -33,7 +32,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
     setState(() {
       users = response;
-      filteredUsers = response; 
+      filteredUsers = response;
       isLoading = false;
     });
   }
@@ -64,9 +63,9 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   Future<void> deleteUser(String idUser) async {
     await supabase.from('users').delete().eq('id_user', idUser);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("User berhasil dihapus")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("User berhasil dihapus")));
 
     fetchUsers();
   }
@@ -160,6 +159,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
             // INPUT EMAIL
             TextField(
               controller: emailController,
+              readOnly: title == "Edit Pengguna", 
               decoration: InputDecoration(
                 hintText: "Email",
                 hintStyle: GoogleFonts.poppins(fontSize: 13),
@@ -235,9 +235,18 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           nameController: nameController,
           emailController: emailController,
           onConfirm: () async {
+            // ===== VALIDASI =====
+            if (nameController.text.trim().isEmpty ||
+                emailController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Nama dan Email wajib diisi")),
+              );
+              return;
+            }
+
             await supabase.from("users").insert({
-              "username": nameController.text,
-              "email": emailController.text,
+              "username": nameController.text.trim(),
+              "email": emailController.text.trim(),
               "role": "peminjam",
             });
 
@@ -267,11 +276,18 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           nameController: nameController,
           emailController: emailController,
           onConfirm: () async {
+            // ===== VALIDASI =====
+            if (nameController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Username tidak boleh kosong")),
+              );
+              return;
+            }
+
             await supabase
                 .from("users")
                 .update({
-                  "username": nameController.text,
-                  "email": emailController.text,
+                  "username": nameController.text.trim(),
                   "update_at": DateTime.now().toIso8601String(),
                 })
                 .eq("id_user", user["id_user"]);
@@ -279,7 +295,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
             Navigator.pop(context);
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("User berhasil diupdate")),
+              const SnackBar(content: Text("Username berhasil diupdate")),
             );
 
             fetchUsers();
@@ -344,7 +360,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
             const SizedBox(height: 12),
 
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
@@ -361,13 +376,17 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade400, width: 1.5),
+                    borderSide: BorderSide(
+                      color: Colors.grey.shade400,
+                      width: 1.5,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF6C6D7A), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF6C6D7A),
+                      width: 2,
+                    ),
                   ),
                 ),
               ),

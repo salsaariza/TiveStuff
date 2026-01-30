@@ -28,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // Ambil data user dari tabel 'users'
       final response = await supabase
           .from('users')
           .select('username, email, role')

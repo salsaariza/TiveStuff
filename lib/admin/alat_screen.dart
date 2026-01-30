@@ -169,7 +169,9 @@ class _AlatScreenState extends State<AlatScreen> {
               Navigator.pop(context);
               deleteAlat(alat.id);
             },
-            child: Text("Hapus", style: GoogleFonts.poppins()),
+            child: Text("Hapus", style: GoogleFonts.poppins(
+              color: Colors.white,
+            )),
           ),
         ],
       ),
