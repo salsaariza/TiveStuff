@@ -22,10 +22,27 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
   final List<String> kondisiOptions = ['baik', 'pemeliharaan', 'rusak'];
 
+  // ================== SEARCH ==================
+  final TextEditingController searchController = TextEditingController();
+  String searchQuery = "";
+
   @override
   void initState() {
     super.initState();
     fetchRiwayat();
+
+    // ✅ realtime search
+    searchController.addListener(() {
+      setState(() {
+        searchQuery = searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   // ================== FETCH DATA ==================
@@ -62,7 +79,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           'status': item['status_peminjaman'] ?? 'menunggu',
           'tanggal_pinjam': item['tanggal_pinjam'],
           'tanggal_kembali': item['tanggal_kembali'],
-          'kondisi': '-', // belum ada kondisi alat
+          'kondisi': '-',
           'type': 'Peminjaman',
         });
       }
@@ -93,14 +110,31 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     }
   }
 
-  // ================== FILTER ==================
+  // ================== FILTER + SEARCH ==================
   List<Map<String, dynamic>> get filteredData {
+    List<Map<String, dynamic>> data = riwayatData;
+
+    // ✅ Filter Chip
     if (selectedFilter == 1) {
-      return riwayatData.where((e) => e['type'] == 'Peminjaman').toList();
+      data = data.where((e) => e['type'] == 'Peminjaman').toList();
     } else if (selectedFilter == 2) {
-      return riwayatData.where((e) => e['type'] == 'Pengembalian').toList();
+      data = data.where((e) => e['type'] == 'Pengembalian').toList();
     }
-    return riwayatData;
+
+    // ✅ Search Filter
+    if (searchQuery.isNotEmpty) {
+      data = data.where((e) {
+        final nama = (e['nama'] ?? '').toString().toLowerCase();
+        final status = (e['status'] ?? '').toString().toLowerCase();
+        final kondisi = (e['kondisi'] ?? '').toString().toLowerCase();
+
+        return nama.contains(searchQuery) ||
+            status.contains(searchQuery) ||
+            kondisi.contains(searchQuery);
+      }).toList();
+    }
+
+    return data;
   }
 
   // ================== DELETE ==================
@@ -117,10 +151,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             .delete()
             .eq('id_pengembalian', item['id']);
       }
+
       fetchRiwayat();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Riwayat berhasil dihapus")));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Riwayat berhasil dihapus")),
+      );
     } catch (e) {
       print("Error deleteRiwayat: $e");
     }
@@ -188,7 +224,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  // ================== EDIT ==================
+  // ================== EDIT (TETAP) ==================
   void editRiwayat(Map<String, dynamic> item) {
     DateTime tanggalKembali = item['tanggal_kembali'] != null
         ? DateTime.parse(item['tanggal_kembali'])
@@ -206,16 +242,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
               insetPadding: const EdgeInsets.symmetric(horizontal: 20),
               child: SizedBox(
-                width:
-                    MediaQuery.of(context).size.width *
-                    0.9, // dialog 90% lebar layar
+                width: MediaQuery.of(context).size.width * 0.9,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Judul
                       Text(
                         "Edit Riwayat",
                         style: GoogleFonts.poppins(
@@ -225,12 +258,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Tanggal Kembali
                       Text(
                         "Tanggal Kembali",
                         style: GoogleFonts.poppins(fontSize: 13),
                       ),
                       const SizedBox(height: 6),
+
                       GestureDetector(
                         onTap: () async {
                           DateTime? picked = await showDatePicker(
@@ -268,9 +301,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 12),
 
-                      // Kondisi Alat jika tipe Pengembalian
                       if (item['type'] == 'Pengembalian') ...[
                         Text(
                           "Kondisi Alat",
@@ -303,23 +336,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             () => kondisi = value ?? kondisiOptions.first,
                           ),
                         ),
-                        const SizedBox(height: 12),
                       ],
 
                       const SizedBox(height: 20),
+
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
                               child: Text(
                                 "Batal",
                                 style: GoogleFonts.poppins(fontSize: 13),
@@ -334,35 +359,24 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                   await supabase
                                       .from('pengembalian')
                                       .update({
-                                        'tanggal_kembali': tanggalKembali
-                                            .toIso8601String(),
+                                        'tanggal_kembali':
+                                            tanggalKembali.toIso8601String(),
                                         'kondisi_alat': kondisi,
-                                        'update_at': DateTime.now()
-                                            .toIso8601String(),
                                       })
                                       .eq('id_pengembalian', item['id']);
                                 } else {
                                   await supabase
                                       .from('peminjaman')
                                       .update({
-                                        'tanggal_kembali': tanggalKembali
-                                            .toIso8601String(),
-                                        'update_at': DateTime.now()
-                                            .toIso8601String(),
+                                        'tanggal_kembali':
+                                            tanggalKembali.toIso8601String(),
                                       })
                                       .eq('id_peminjaman', item['id']);
                                 }
+
                                 Navigator.pop(context);
                                 fetchRiwayat();
                               },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
                               child: Text(
                                 "Konfirmasi",
                                 style: GoogleFonts.poppins(fontSize: 13),
@@ -370,7 +384,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             ),
                           ),
                         ],
-                      ),
+                      )
                     ],
                   ),
                 ),
@@ -414,9 +428,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
             ),
             const SizedBox(height: 12),
+
+            // ✅ SEARCH FIELD (UI TIDAK BERUBAH)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
+                controller: searchController,
                 decoration: InputDecoration(
                   hintText: "Cari",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
@@ -444,7 +461,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 14),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -457,7 +476,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
