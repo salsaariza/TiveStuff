@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tivestuff1/admin/edit_alat_screen.dart';
-
 import '../models/alat_models.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
@@ -280,8 +279,8 @@ class _AlatScreenState extends State<AlatScreen> {
                   items: [
                     DropdownMenuItem(
                       value: null,
-                      child: Text("Semua Kategori",
-                          style: GoogleFonts.poppins()),
+                      child: Text("Semua",
+                          style: GoogleFonts.poppins(fontSize: 15)),
                     ),
                     ...kategoriList.map(
                       (k) => DropdownMenuItem(
@@ -374,6 +373,7 @@ class _AlatScreenState extends State<AlatScreen> {
                   : null,
             ),
           ),
+          const SizedBox(height: 10,),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(alat.nama,

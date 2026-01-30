@@ -111,7 +111,7 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
                 onChanged: (value) => setState(() => searchQuery = value),
                 decoration: InputDecoration(
                   hintText: "Cari",
-                  hintStyle: GoogleFonts.poppins(fontSize: 13),
+                  hintStyle: GoogleFonts.poppins(fontSize: 15),
                   suffixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: Colors.white,
