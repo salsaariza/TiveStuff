@@ -26,7 +26,6 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
   File? selectedImage;
   Uint8List? selectedWebImage;
-  String? uploadedImageUrl;
 
   final TextEditingController namaController = TextEditingController();
   final TextEditingController stokController = TextEditingController();
@@ -38,13 +37,19 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
   bool isLoading = false;
 
+  // ✅ FORM VALIDASI
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  // ✅ ERROR DROPDOWN
+  String? kategoriError;
+
   @override
   void initState() {
     super.initState();
     fetchKategori();
   }
 
-  /// Ambil kategori dari Supabase
+  /// ================= FETCH KATEGORI =================
   Future<void> fetchKategori() async {
     try {
       final response = await supabase
@@ -61,7 +66,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     }
   }
 
-  /// PICK IMAGE DARI LAPTOP
+  /// ================= PICK IMAGE =================
   Future<void> pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
@@ -75,112 +80,106 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
     setState(() {
       if (kIsWeb) {
-        // ✅ WEB → gunakan bytes
         selectedWebImage = file.bytes;
         selectedImage = null;
       } else {
-        // ✅ MOBILE/DESKTOP → gunakan path
         selectedImage = File(file.path!);
         selectedWebImage = null;
       }
     });
   }
 
-  /// SUBMIT FORM KE SUPABASE
+  /// ================= SUBMIT FORM =================
   Future<void> submitForm() async {
-  // =========================
-  // VALIDASI WAJIB ISI
-  // =========================
-  if (namaController.text.trim().isEmpty ||
-      hargaController.text.trim().isEmpty ||
-      stokController.text.trim().isEmpty ||
-      spesifikasiController.text.trim().isEmpty ||
-      selectedKategori == null ||
-      ((kIsWeb && selectedWebImage == null) ||
-          (!kIsWeb && selectedImage == null))) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("SEMUA DATA WAJIB DIISI, TERMASUK GAMBAR"),
-      ),
-    );
-    return;
-  }
-
-  // =========================
-  // VALIDASI ANGKA
-  // =========================
-  final harga = double.tryParse(hargaController.text);
-  final stok = int.tryParse(stokController.text);
-
-  if (harga == null || harga <= 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Harga harus berupa angka valid")),
-    );
-    return;
-  }
-
-  if (stok == null || stok < 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Stok harus berupa angka valid")),
-    );
-    return;
-  }
-
-  setState(() => isLoading = true);
-
-  try {
-    String? imageUrl;
-
-    // =========================
-    // UPLOAD GAMBAR
-    // =========================
-    final fileName = "alat_${DateTime.now().millisecondsSinceEpoch}.png";
-
-    if (kIsWeb) {
-      await supabase.storage.from('alat_image').uploadBinary(
-            fileName,
-            selectedWebImage!,
-            fileOptions: const FileOptions(contentType: "image/png"),
-          );
-    } else {
-      await supabase.storage.from('alat_image').upload(
-            fileName,
-            selectedImage!,
-            fileOptions: const FileOptions(contentType: "image/png"),
-          );
+    // ✅ VALIDASI FORM INPUT
+    if (!_formKey.currentState!.validate()) {
+      return;
     }
 
-    imageUrl = supabase.storage.from('alat_image').getPublicUrl(fileName);
+    // ✅ VALIDASI DROPDOWN
+    if (selectedKategori == null) {
+      setState(() {
+        kategoriError = "Kategori wajib dipilih!";
+      });
+      return;
+    }
 
-    // =========================
-    // INSERT KE DATABASE
-    // =========================
-    final response = await supabase.from('alat').insert({
-      'nama_alat': namaController.text.trim(),
-      'id_kategori': selectedKategori!['id_kategori'],
-      'harga_alat': harga,
-      'stok': stok,
-      'spesifikasi_alat': spesifikasiController.text.trim(),
-      'gambar_alat': imageUrl,
-    }).select();
+    // ✅ VALIDASI GAMBAR
+    if ((kIsWeb && selectedWebImage == null) ||
+        (!kIsWeb && selectedImage == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gambar wajib ditambahkan!")),
+      );
+      return;
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Alat berhasil ditambahkan")),
-    );
+    // ✅ VALIDASI ANGKA
+    final harga = double.tryParse(hargaController.text);
+    final stok = int.tryParse(stokController.text);
 
-    Navigator.pop(context, response[0]);
-  } catch (e) {
-    debugPrint("ERROR ADD ALAT: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Gagal menambahkan alat")),
-    );
-  } finally {
-    setState(() => isLoading = false);
+    if (harga == null || harga <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Harga harus berupa angka valid")),
+      );
+      return;
+    }
+
+    if (stok == null || stok < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Stok harus berupa angka valid")),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      // ================= UPLOAD GAMBAR =================
+      final fileName = "alat_${DateTime.now().millisecondsSinceEpoch}.png";
+
+      if (kIsWeb) {
+        await supabase.storage.from('alat_image').uploadBinary(
+              fileName,
+              selectedWebImage!,
+              fileOptions: const FileOptions(contentType: "image/png"),
+            );
+      } else {
+        await supabase.storage.from('alat_image').upload(
+              fileName,
+              selectedImage!,
+              fileOptions: const FileOptions(contentType: "image/png"),
+            );
+      }
+
+      final imageUrl =
+          supabase.storage.from('alat_image').getPublicUrl(fileName);
+
+      // ================= INSERT DATABASE =================
+      final response = await supabase.from('alat').insert({
+        'nama_alat': namaController.text.trim(),
+        'id_kategori': selectedKategori!['id_kategori'],
+        'harga_alat': harga,
+        'stok': stok,
+        'spesifikasi_alat': spesifikasiController.text.trim(),
+        'gambar_alat': imageUrl,
+      }).select();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Alat berhasil ditambahkan")),
+      );
+
+      Navigator.pop(context, response[0]);
+    } catch (e) {
+      debugPrint("ERROR ADD ALAT: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gagal menambahkan alat")),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
-}
 
-
-  /// BUILD UI
+  /// ================= BUILD UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -215,7 +214,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// FORM CARD
+  /// ================= FORM CARD =================
   Widget _formCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -230,40 +229,46 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          _imagePicker(),
-          const SizedBox(height: 20),
-          _input("Nama Alat", "Masukkan nama", controller: namaController),
-          const SizedBox(height: 14),
-          _kategoriDropdown(),
-          const SizedBox(height: 14),
-          _input(
-            "Harga",
-            "Masukkan harga",
-            controller: hargaController,
-            keyboard: TextInputType.number,
-          ),
-          const SizedBox(height: 14),
-          _input(
-            "Stok",
-            "Masukkan stok",
-            controller: stokController,
-            keyboard: TextInputType.number,
-          ),
-          const SizedBox(height: 14),
-          _input(
-            "Spesifikasi",
-            "Masukkan spesifikasi",
-            controller: spesifikasiController,
-          ),
-          const SizedBox(height: 14),
-          _actionButtons(),
-        ],
+
+      // ✅ FORM VALIDASI TANPA UBAH UI
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            _imagePicker(),
+            const SizedBox(height: 20),
+            _input("Nama Alat", "Masukkan nama", controller: namaController),
+            const SizedBox(height: 14),
+            _kategoriDropdown(),
+            const SizedBox(height: 14),
+            _input(
+              "Harga",
+              "Masukkan harga",
+              controller: hargaController,
+              keyboard: TextInputType.number,
+            ),
+            const SizedBox(height: 14),
+            _input(
+              "Stok",
+              "Masukkan stok",
+              controller: stokController,
+              keyboard: TextInputType.number,
+            ),
+            const SizedBox(height: 14),
+            _input(
+              "Spesifikasi",
+              "Masukkan spesifikasi",
+              controller: spesifikasiController,
+            ),
+            const SizedBox(height: 14),
+            _actionButtons(),
+          ],
+        ),
       ),
     );
   }
 
+  /// ================= PREVIEW IMAGE =================
   Widget _buildImagePreview() {
     if (kIsWeb && selectedWebImage != null) {
       return Image.memory(selectedWebImage!, fit: BoxFit.cover);
@@ -282,7 +287,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// IMAGE PICKER WIDGET
+  /// ================= IMAGE PICKER =================
   Widget _imagePicker() {
     return Column(
       children: [
@@ -294,16 +299,12 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             border: Border.all(color: Colors.grey.shade400, width: 1.5),
             color: Colors.grey.shade100,
           ),
-
-          /// PREVIEW GAMBAR
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: _buildImagePreview(),
           ),
         ),
-
         const SizedBox(height: 10),
-
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF6C6D7A),
@@ -325,7 +326,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     );
   }
 
-  /// DROPDOWN KATEGORI
+  /// ================= DROPDOWN =================
   Widget _kategoriDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,15 +362,29 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             onChanged: (value) {
               setState(() {
                 selectedKategori = value;
+                kategoriError = null;
               });
             },
           ),
         ),
+
+        // ✅ ERROR TEXT
+        if (kategoriError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 8),
+            child: Text(
+              kategoriError!,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: Colors.red,
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  /// INPUT FIELD
+  /// ================= INPUT FIELD =================
   Widget _input(
     String label,
     String hint, {
@@ -384,7 +399,9 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
           style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 6),
-        TextField(
+
+        // ✅ TextFormField + VALIDATOR (UI sama)
+        TextFormField(
           controller: controller,
           keyboardType: keyboard,
           decoration: InputDecoration(
@@ -397,12 +414,18 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             enabledBorder: _border,
             focusedBorder: _border,
           ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return "$label wajib diisi!";
+            }
+            return null;
+          },
         ),
       ],
     );
   }
 
-  /// ACTION BUTTONS
+  /// ================= BUTTONS =================
   Widget _actionButtons() {
     return Row(
       children: [

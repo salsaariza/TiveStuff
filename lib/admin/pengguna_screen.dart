@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
 
@@ -121,102 +120,119 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     required TextEditingController emailController,
     required VoidCallback onConfirm,
   }) {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 30),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // INPUT NAMA
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                hintText: "Nama",
-                hintStyle: GoogleFonts.poppins(fontSize: 13),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // INPUT EMAIL
-            TextField(
-              controller: emailController,
-              readOnly: title == "Edit Pengguna", 
-              decoration: InputDecoration(
-                hintText: "Email",
-                hintStyle: GoogleFonts.poppins(fontSize: 13),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 22),
-
-            // BUTTON
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "Batal",
-                      style: GoogleFonts.poppins(fontSize: 13),
-                    ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  hintText: "Nama",
+                  hintStyle: GoogleFonts.poppins(fontSize: 13),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C6D7A),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Nama wajib diisi!";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: emailController,
+                readOnly: title == "Edit Pengguna",
+                decoration: InputDecoration(
+                  hintText: "Email",
+                  hintStyle: GoogleFonts.poppins(fontSize: 13),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Email wajib diisi!";
+                  }
+                  if (!value.contains("@")) {
+                    return "Format email tidak valid!";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 22),
+              // BUTTON
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                    ),
-                    onPressed: onConfirm,
-                    child: Text(
-                      "Konfirmasi",
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "Batal",
+                        style: GoogleFonts.poppins(fontSize: 13),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C6D7A),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          onConfirm();
+                        }
+                      },
+                      child: Text(
+                        "Konfirmasi",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -235,7 +251,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           nameController: nameController,
           emailController: emailController,
           onConfirm: () async {
-            // ===== VALIDASI =====
             if (nameController.text.trim().isEmpty ||
                 emailController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -276,7 +291,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           nameController: nameController,
           emailController: emailController,
           onConfirm: () async {
-            // ===== VALIDASI =====
             if (nameController.text.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Username tidak boleh kosong")),
@@ -317,13 +331,11 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
-
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF6C6D7A),
         onPressed: addUser,
         child: const Icon(Icons.person_add, color: Colors.white),
       ),
-
       bottomNavigationBar: AppBottomNav(
         currentIndex: 2,
         onTap: (index) {
@@ -339,14 +351,12 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           }
         },
       ),
-
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Header(),
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
@@ -357,9 +367,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
@@ -391,20 +399,29 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: filteredUsers.length,
-                      itemBuilder: (context, index) {
-                        final user = filteredUsers[index];
-                        return _userCard(user);
-                      },
-                    ),
+                  : filteredUsers.isEmpty
+                      ? Center(
+                          child: Text(
+                            "Data Pengguna Kosong",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: filteredUsers.length,
+                          itemBuilder: (context, index) {
+                            final user = filteredUsers[index];
+                            return _userCard(user);
+                          },
+                        ),
             ),
           ],
         ),

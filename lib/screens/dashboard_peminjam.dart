@@ -150,7 +150,7 @@ class _DashboardScreenState extends State<DashboardPeminjam> {
   // ================= TITLE =================
   Widget _dashboardTitle(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 15),
       child: Text(
         "Dashboard",
         style: GoogleFonts.poppins(
@@ -176,7 +176,7 @@ class _DashboardScreenState extends State<DashboardPeminjam> {
         crossAxisSpacing: 12,
         childAspectRatio: 1.4,
         children: [
-          _statCard(context, totalUser.toString(), "PENGGUNA AKTIF"),
+          _statCard(context, totalUser.toString(), "PENGGUNA"),
           _statCard(context, totalAlat.toString(), "JUMLAH ALAT"),
           _statCard(context, alatTersedia.toString(), "ALAT TERSEDIA"),
           _statCard(context, alatDipinjam.toString(), "ALAT DIPINJAM"),

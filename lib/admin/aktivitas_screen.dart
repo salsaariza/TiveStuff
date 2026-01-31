@@ -142,8 +142,12 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
                   : filteredAktivitas.isEmpty
                       ? Center(
                           child: Text(
-                            "Tidak ada aktivitas",
-                            style: GoogleFonts.poppins(fontSize: 14),
+                            "Data Aktivitas Kosong",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         )
                       : ListView.builder(

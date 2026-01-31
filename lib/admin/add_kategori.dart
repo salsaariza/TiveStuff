@@ -15,6 +15,9 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
   final TextEditingController _kategoriController = TextEditingController();
 
+  // ✅ FORM KEY UNTUK VALIDASI
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   bool isLoading = true;
 
   List<Map<String, dynamic>> kategoriList = [];
@@ -57,9 +60,10 @@ class _KategoriScreenState extends State<KategoriScreen> {
     await supabase.from('kategori').insert({
       'nama_kategori': nama,
     });
+
     await fetchKategori();
     Navigator.pop(context);
-    Navigator.pop(context, true); // balik ke AlatScreen
+    Navigator.pop(context, true);
   }
 
   /// ================= UPDATE =================
@@ -74,20 +78,15 @@ class _KategoriScreenState extends State<KategoriScreen> {
     Navigator.pop(context, true);
   }
 
-  /// ================= DELETE  =================
+  /// ================= DELETE =================
   Future<void> deleteKategori(int id) async {
-  try {
-    await supabase
-        .from('kategori')
-        .delete() 
-        .eq('id_kategori', id);
-
-    await fetchKategori();
-  } catch (e) {
-    debugPrint("ERROR DELETE KATEGORI: $e");
+    try {
+      await supabase.from('kategori').delete().eq('id_kategori', id);
+      await fetchKategori();
+    } catch (e) {
+      debugPrint("ERROR DELETE KATEGORI: $e");
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -198,13 +197,12 @@ class _KategoriScreenState extends State<KategoriScreen> {
     );
   }
 
-  /// ================= ADD / EDIT =================
+  /// ================= ADD / EDIT + VALIDASI =================
   void _showKategoriDialog({
     bool isEdit = false,
     Map<String, dynamic>? kategori,
   }) {
-    _kategoriController.text =
-        isEdit ? kategori!['nama_kategori'] : "";
+    _kategoriController.text = isEdit ? kategori!['nama_kategori'] : "";
 
     showDialog(
       context: context,
@@ -216,77 +214,102 @@ class _KategoriScreenState extends State<KategoriScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    isEdit ? "Edit Kategori" : "Tambah Kategori",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
 
-                Text("Nama Kategori",
-                    style: GoogleFonts.poppins(fontSize: 12)),
-                const SizedBox(height: 6),
-
-                TextField(
-                  controller: _kategoriController,
-                  decoration: InputDecoration(
-                    hintText: "Masukkan Kategori",
-                    hintStyle: GoogleFonts.poppins(fontSize: 12),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text("Batal",
-                            style: GoogleFonts.poppins(fontSize: 12)),
+            // ✅ FORM VALIDASI (UI TETAP SAMA)
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      isEdit ? "Edit Kategori" : "Tambah Kategori",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6C6D7A),
-                        ),
-                        onPressed: () {
-                          if (_kategoriController.text.isEmpty) return;
+                  ),
+                  const SizedBox(height: 16),
 
-                          if (isEdit) {
-                            updateKategori(
-                              kategori!['id_kategori'],
-                              _kategoriController.text,
-                            );
-                          } else {
-                            addKategori(_kategoriController.text);
-                          }
-                        },
-                        child: Text(
-                          "Konfirmasi",
-                          style: GoogleFonts.poppins(
-                              fontSize: 12, color: Colors.white),
-                        ),
+                  Text(
+                    "Nama Kategori",
+                    style: GoogleFonts.poppins(fontSize: 12),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // ✅ VALIDASI WAJIB ISI
+                  TextFormField(
+                    controller: _kategoriController,
+                    decoration: InputDecoration(
+                      hintText: "Masukkan Kategori",
+                      hintStyle: GoogleFonts.poppins(fontSize: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return "Kategori wajib diisi!";
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            "Batal",
+                            style: GoogleFonts.poppins(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6C6D7A),
+                          ),
+                          onPressed: () {
+                            // ✅ CEK VALIDASI
+                            if (_formKey.currentState!.validate()) {
+                              final nama =
+                                  _kategoriController.text.trim();
+
+                              if (isEdit) {
+                                updateKategori(
+                                  kategori!['id_kategori'],
+                                  nama,
+                                );
+                              } else {
+                                addKategori(nama);
+                              }
+                            }
+                          },
+                          child: Text(
+                            "Konfirmasi",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -300,10 +323,11 @@ class _KategoriScreenState extends State<KategoriScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title:
-              Text("Hapus Kategori", style: GoogleFonts.poppins()),
-          content: Text("Yakin ingin menghapus kategori ini?",
-              style: GoogleFonts.poppins(fontSize: 13)),
+          title: Text("Hapus Kategori", style: GoogleFonts.poppins()),
+          content: Text(
+            "Yakin ingin menghapus kategori ini?",
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -314,9 +338,10 @@ class _KategoriScreenState extends State<KategoriScreen> {
                 deleteKategori(id);
                 Navigator.pop(context);
               },
-              child: Text("Hapus",
-                  style:
-                      GoogleFonts.poppins(color: Colors.red)),
+              child: Text(
+                "Hapus",
+                style: GoogleFonts.poppins(color: Colors.red),
+              ),
             ),
           ],
         );

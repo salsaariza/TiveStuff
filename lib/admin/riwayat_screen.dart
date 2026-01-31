@@ -257,13 +257,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-
                       Text(
                         "Tanggal Kembali",
                         style: GoogleFonts.poppins(fontSize: 13),
                       ),
                       const SizedBox(height: 6),
-
                       GestureDetector(
                         onTap: () async {
                           DateTime? picked = await showDatePicker(
@@ -301,9 +299,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
                       if (item['type'] == 'Pengembalian') ...[
                         Text(
                           "Kondisi Alat",
@@ -337,9 +333,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           ),
                         ),
                       ],
-
                       const SizedBox(height: 20),
-
                       Row(
                         children: [
                           Expanded(
@@ -428,8 +422,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // ✅ SEARCH FIELD (UI TIDAK BERUBAH)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
@@ -461,9 +453,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 14),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -476,22 +466,31 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: filteredData.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: _riwayatCard(filteredData[index]),
-                        );
-                      },
-                    ),
+                  : filteredData.isEmpty
+                      ? Center(
+                          child: Text(
+                            "Data Riwayat Kosong",
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: filteredData.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _riwayatCard(filteredData[index]),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
