@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
 
@@ -31,7 +30,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     super.initState();
     fetchRiwayat();
 
-    // ✅ realtime search
+ 
     searchController.addListener(() {
       setState(() {
         searchQuery = searchController.text.toLowerCase();
@@ -114,14 +113,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   List<Map<String, dynamic>> get filteredData {
     List<Map<String, dynamic>> data = riwayatData;
 
-    // ✅ Filter Chip
+    
     if (selectedFilter == 1) {
       data = data.where((e) => e['type'] == 'Peminjaman').toList();
     } else if (selectedFilter == 2) {
       data = data.where((e) => e['type'] == 'Pengembalian').toList();
     }
 
-    // ✅ Search Filter
     if (searchQuery.isNotEmpty) {
       data = data.where((e) {
         final nama = (e['nama'] ?? '').toString().toLowerCase();
