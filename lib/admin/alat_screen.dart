@@ -252,49 +252,86 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= KATEGORI =================
+  
+  /// KATEGORI
   Widget _kategoriSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade400),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<KategoriModel?>(
-                  value: selectedKategori,
-                  hint: Text(
-                    "Kategori",
-                    style: GoogleFonts.poppins(fontSize: 14),
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C6D7A),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<KategoriModel?>(
+                value: selectedKategori,
+                isDense: true,
+                dropdownColor: Colors.white,
+                icon: const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                hint: Text(
+                  "Kategori",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
-                  isExpanded: true,
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(
+                      "Semua",
+                      style: GoogleFonts.poppins(fontSize: 13),
+                    ),
+                  ),
+                  ...kategoriList.map(
+                    (k) => DropdownMenuItem(
+                      value: k,
                       child: Text(
-                        "Semua",
-                        style: GoogleFonts.poppins(fontSize: 15),
+                        k.nama,
+                        style: GoogleFonts.poppins(fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: filterKategori,
+                selectedItemBuilder: (context) {
+                  return [
+                    Text(
+                      "Kategori",
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     ...kategoriList.map(
-                      (k) => DropdownMenuItem(
-                        value: k,
-                        child: Text(k.nama, style: GoogleFonts.poppins()),
+                      (k) => Text(
+                        k.nama,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ],
-                  onChanged: filterKategori,
-                ),
+                  ];
+                },
               ),
             ),
           ),
+
           const SizedBox(width: 10),
+
+          // TAMBAH KATEGORI
           InkWell(
             onTap: () async {
               final result = await Navigator.push(
@@ -304,12 +341,13 @@ class _AlatScreenState extends State<AlatScreen> {
               if (result != null) fetchKategori();
             },
             child: Container(
-              padding: const EdgeInsets.all(12),
+              height: 36,
+              width: 36,
               decoration: BoxDecoration(
                 color: const Color(0xFF6C6D7A),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.add, color: Colors.white),
+              child: const Icon(Icons.add, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -372,7 +410,7 @@ class _AlatScreenState extends State<AlatScreen> {
                   : null,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
@@ -385,6 +423,7 @@ class _AlatScreenState extends State<AlatScreen> {
               ),
             ),
           ),
+          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(

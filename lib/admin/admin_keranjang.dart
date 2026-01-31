@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:tivestuff1/widgets/back_peminjam.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tivestuff1/widgets/header_back.dart';
 
-class KeranjangPeminjamanScreen extends StatefulWidget {
-  const KeranjangPeminjamanScreen({Key? key}) : super(key: key);
+class AdminKeranjang extends StatefulWidget {
+  const AdminKeranjang({Key? key}) : super(key: key);
 
   @override
-  State<KeranjangPeminjamanScreen> createState() =>
-      _KeranjangPeminjamanScreenState();
+  State<AdminKeranjang> createState() => _KeranjangPeminjamanScreenState();
 }
 
-class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
+class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
   final supabase = Supabase.instance.client;
 
   final TextEditingController tanggalPinjamController = TextEditingController();
   final TextEditingController tanggalController = TextEditingController();
 
   List<Map<String, dynamic>> keranjang = [];
+
+  /// ================= STATE USER =================
+  List<Map<String, dynamic>> userList = [];
+  String? selectedUserId;
+  Map<String, Map<String, dynamic>> userMap = {};
+
+  bool loadingUsers = true;
 
   @override
   void didChangeDependencies() {
@@ -26,6 +32,35 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
 
     if (args != null && args is List<Map<String, dynamic>>) {
       keranjang = List<Map<String, dynamic>>.from(args);
+    }
+
+    if (userList.isEmpty) {
+      _fetchUsers();
+    }
+  }
+
+  Future<void> _fetchUsers() async {
+    try {
+      final response = await supabase
+          .from('users')
+          .select('id_user, username, role')
+          .eq('role', 'peminjam')
+          .order('username', ascending: true);
+
+      final users = List<Map<String, dynamic>>.from(response);
+
+      setState(() {
+        userList = users;
+        userMap = {for (var u in users) u['id_user'] as String: u};
+        selectedUserId = users.isNotEmpty
+            ? users.first['id_user'] as String
+            : null;
+        loadingUsers = false;
+      });
+    } catch (e) {
+      debugPrint('ERROR FETCH USERS: $e');
+      loadingUsers = false;
+      _showSnack('Gagal memuat daftar peminjam');
     }
   }
 
@@ -36,7 +71,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const BackPeminjam(),
+            const Header(),
             Expanded(
               child: keranjang.isEmpty ? _keranjangKosong() : _keranjangAda(),
             ),
@@ -91,13 +126,13 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
                 },
               ),
             );
-          }).toList(),
+          }),
 
           const SizedBox(height: 18),
 
-          /// TANGGAL PEMINJAMAN
+          /// DROPDOWN PILIH USER
           Text(
-            "Tanggal Peminjaman",
+            "Pilih Peminjam",
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -105,25 +140,59 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
             ),
           ),
           const SizedBox(height: 6),
+
+          loadingUsers
+              ? const Center(child: CircularProgressIndicator())
+              : DropdownButtonFormField<String>(
+                  value: selectedUserId,
+                  items: userList
+                      .map(
+                        (u) => DropdownMenuItem<String>(
+                          value: u['id_user'] as String,
+                          child: Text(
+                            u['username'] ?? '-',
+                            style: GoogleFonts.poppins(fontSize: 13),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedUserId = val;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+
+          const SizedBox(height: 18),
+
+          /// TANGGAL
+          Text("Tanggal Peminjaman", style: GoogleFonts.poppins(fontSize: 12)),
+          const SizedBox(height: 6),
           _buildTanggalField(tanggalPinjamController),
 
           const SizedBox(height: 18),
 
-          /// TANGGAL PENGEMBALIAN
           Text(
             "Tanggal Pengembalian",
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
-            ),
+            style: GoogleFonts.poppins(fontSize: 12),
           ),
           const SizedBox(height: 6),
           _buildTanggalField(tanggalController),
 
           const SizedBox(height: 24),
 
-          /// BUTTON
           SizedBox(
             width: double.infinity,
             height: 45,
@@ -148,6 +217,65 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
         ],
       ),
     );
+  }
+
+  /// ================= LOGIC =================
+
+  DateTime _parseTanggal(String tanggal) {
+    final p = tanggal.split('/');
+    return DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+  }
+
+  Future<void> _ajukanPeminjaman() async {
+    try {
+      if (selectedUserId == null) {
+        _showSnack('Peminjam belum dipilih');
+        return;
+      }
+
+      if (keranjang.isEmpty) {
+        _showSnack('Keranjang kosong');
+        return;
+      }
+
+      if (tanggalPinjamController.text.isEmpty ||
+          tanggalController.text.isEmpty) {
+        _showSnack('Tanggal belum diisi');
+        return;
+      }
+
+      final tanggalPinjam = _parseTanggal(tanggalPinjamController.text);
+      final tanggalKembali = _parseTanggal(tanggalController.text);
+
+      for (final alat in keranjang) {
+        await supabase.rpc(
+          'ajukan_peminjaman_dengan_stok',
+          params: {
+            'p_id_user': selectedUserId,
+            'p_id_alat': alat['id_alat'],
+            'p_tanggal_pinjam': tanggalPinjam.toIso8601String(),
+            'p_tanggal_kembali': tanggalKembali.toIso8601String(),
+          },
+        );
+      }
+
+      if (!mounted) return;
+
+      _showSnack('Peminjaman berhasil diajukan');
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } catch (e) {
+      debugPrint('ERROR PEMINJAMAN: $e');
+
+      if (e.toString().contains('Stok alat habis')) {
+        _showSnack('Stok alat sudah habis');
+      } else {
+        _showSnack('Gagal mengajukan peminjaman');
+      }
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Widget _buildTanggalField(TextEditingController controller) {
@@ -180,85 +308,6 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
         }
       },
     );
-  }
-
-  /// ================= LOGIC =================
-
-  DateTime _parseTanggal(String tanggal) {
-    final p = tanggal.split('/');
-    return DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-  }
-
-  Future<void> _ajukanPeminjaman() async {
-    try {
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        _showSnack('User belum login');
-        return;
-      }
-
-      if (keranjang.isEmpty) {
-        _showSnack('Keranjang kosong');
-        return;
-      }
-
-      for (final item in keranjang) {
-        if (item['id_alat'] == null) {
-          _showSnack('ID alat tidak valid');
-          return;
-        }
-      }
-
-      if (tanggalPinjamController.text.isEmpty ||
-          tanggalController.text.isEmpty) {
-        _showSnack('Tanggal belum diisi');
-        return;
-      }
-
-      final tanggalPinjam = _parseTanggal(tanggalPinjamController.text);
-      final tanggalKembali = _parseTanggal(tanggalController.text);
-
-      /// ================= INSERT PEMINJAMAN =================
-      final peminjaman = await supabase
-          .from('peminjaman')
-          .insert({
-            'id_user': user.id,
-            'id_alat': keranjang.first['id_alat'],
-            'tanggal_pinjam': tanggalPinjam.toIso8601String(),
-            'tanggal_kembali': tanggalKembali.toIso8601String(),
-            'status_peminjaman': 'menunggu',
-            'created_by': user.id,
-          })
-          .select('id_peminjaman')
-          .single();
-
-      final int idPeminjaman = peminjaman['id_peminjaman'];
-
-      /// ================= INSERT DETAIL =================
-      for (final alat in keranjang) {
-        await supabase.from('detail_peminjaman').insert({
-          'id_peminjaman': idPeminjaman,
-          'id_alat': alat['id_alat'],
-          'jumlah': 1,
-          'id_user': user.id,
-          'created_by': user.id,
-        });
-      }
-
-      if (!mounted) return;
-
-      _showSnack('Peminjaman berhasil diajukan');
-      Navigator.pushReplacementNamed(context, '/pengajuanpeminjam');
-    } catch (e) {
-      debugPrint('ERROR PEMINJAMAN: $e');
-      _showSnack('Gagal menyimpan data');
-    }
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildItemCard({

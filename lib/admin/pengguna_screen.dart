@@ -14,11 +14,11 @@ class PenggunaScreen extends StatefulWidget {
 class _PenggunaScreenState extends State<PenggunaScreen> {
   final supabase = Supabase.instance.client;
 
+  final List<String> roleEnum = ['admin', 'petugas', 'peminjam'];
+
   List users = [];
   List filteredUsers = [];
   bool isLoading = true;
-
-  final TextEditingController searchController = TextEditingController();
 
   // ================== LOAD USERS ==================
   Future<void> fetchUsers() async {
@@ -36,91 +36,39 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     });
   }
 
-  // ================== SEARCH USER ==================
+  // ================== SEARCH ==================
   void searchUser(String keyword) {
     if (keyword.isEmpty) {
-      setState(() {
-        filteredUsers = users;
-      });
-      return;
+      filteredUsers = users;
+    } else {
+      filteredUsers = users.where((user) {
+        return user['username'].toString().toLowerCase().contains(
+              keyword.toLowerCase(),
+            ) ||
+            user['email'].toString().toLowerCase().contains(
+              keyword.toLowerCase(),
+            );
+      }).toList();
     }
-
-    final result = users.where((user) {
-      final username = user["username"].toString().toLowerCase();
-      final email = user["email"].toString().toLowerCase();
-
-      return username.contains(keyword.toLowerCase()) ||
-          email.contains(keyword.toLowerCase());
-    }).toList();
-
-    setState(() {
-      filteredUsers = result;
-    });
+    setState(() {});
   }
 
-  // ================== DELETE USER ==================
-  Future<void> deleteUser(String idUser) async {
-    await supabase.from('users').delete().eq('id_user', idUser);
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("User berhasil dihapus")));
-
+  // ================== DELETE ==================
+  Future<void> deleteUser(String id) async {
+    await supabase.from('users').delete().eq('id_user', id);
     fetchUsers();
   }
 
-  // ================== KONFIRMASI DELETE ==================
-  Future<void> confirmDelete(Map user) async {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            "Konfirmasi Hapus",
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-          ),
-          content: Text(
-            "Apakah kamu yakin ingin menghapus pengguna:\n\n${user["username"]}?",
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Batal", style: GoogleFonts.poppins()),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-              ),
-              onPressed: () async {
-                Navigator.pop(context);
-                await deleteUser(user["id_user"]);
-              },
-              child: Text(
-                "Hapus",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ================== FORM DIALOG ==================
+  // ================== DIALOG FORM ==================
   Widget penggunaFormDialog({
     required String title,
     required TextEditingController nameController,
     required TextEditingController emailController,
+    required String selectedRole,
+    required ValueChanged<String> onRoleChanged,
     required VoidCallback onConfirm,
   }) {
-    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -140,6 +88,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // NAMA
               TextFormField(
                 controller: nameController,
                 decoration: InputDecoration(
@@ -153,14 +103,13 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Nama wajib diisi!";
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Nama wajib diisi' : null,
               ),
+
               const SizedBox(height: 14),
+
+              // EMAIL
               TextFormField(
                 controller: emailController,
                 readOnly: title == "Edit Pengguna",
@@ -175,29 +124,53 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Email wajib diisi!";
-                  }
-                  if (!value.contains("@")) {
-                    return "Format email tidak valid!";
-                  }
-                  return null;
-                },
               ),
+
+              const SizedBox(height: 14),
+
+              // ROLE (STYLE IDENTIK TEXTFIELD)
+              DropdownButtonFormField<String>(
+                value: selectedRole,
+                items: roleEnum
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(
+                          e,
+                          style: GoogleFonts.poppins(fontSize: 13),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) onRoleChanged(v);
+                },
+                decoration: InputDecoration(
+                  hintText: "Role",
+                  hintStyle: GoogleFonts.poppins(fontSize: 13),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 22),
-              // BUTTON
+
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      onPressed: () => Navigator.pop(context),
                       child: Text(
                         "Batal",
                         style: GoogleFonts.poppins(fontSize: 13),
@@ -238,95 +211,71 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     );
   }
 
-  // ================== ADD USER ==================
+  // ================== ADD ==================
   Future<void> addUser() async {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
+    final nameC = TextEditingController();
+    final emailC = TextEditingController();
+    String role = 'peminjam';
 
     showDialog(
       context: context,
-      builder: (context) {
-        return penggunaFormDialog(
-          title: "Tambah Pengguna",
-          nameController: nameController,
-          emailController: emailController,
-          onConfirm: () async {
-            if (nameController.text.trim().isEmpty ||
-                emailController.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Nama dan Email wajib diisi")),
-              );
-              return;
-            }
-
-            await supabase.from("users").insert({
-              "username": nameController.text.trim(),
-              "email": emailController.text.trim(),
-              "role": "peminjam",
-            });
-
-            Navigator.pop(context);
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("User berhasil ditambahkan")),
-            );
-
-            fetchUsers();
-          },
-        );
-      },
+      builder: (_) => penggunaFormDialog(
+        title: "Tambah Pengguna",
+        nameController: nameC,
+        emailController: emailC,
+        selectedRole: role,
+        onRoleChanged: (v) => role = v,
+        onConfirm: () async {
+          await supabase.from('users').insert({
+            'username': nameC.text.trim(),
+            'email': emailC.text.trim(),
+            'role': role,
+          });
+          Navigator.pop(context);
+          fetchUsers();
+        },
+      ),
     );
   }
 
-  // ================== EDIT USER ==================
+  // ================== EDIT ==================
   Future<void> editUser(Map user) async {
-    final nameController = TextEditingController(text: user['username']);
-    final emailController = TextEditingController(text: user['email']);
+    final nameC = TextEditingController(text: user['username']);
+    final emailC = TextEditingController(text: user['email']);
+    String role = user['role'];
 
     showDialog(
       context: context,
-      builder: (context) {
-        return penggunaFormDialog(
-          title: "Edit Pengguna",
-          nameController: nameController,
-          emailController: emailController,
-          onConfirm: () async {
-            if (nameController.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Username tidak boleh kosong")),
-              );
-              return;
-            }
+      builder: (_) => penggunaFormDialog(
+        title: "Edit Pengguna",
+        nameController: nameC,
+        emailController: emailC,
+        selectedRole: role,
+        onRoleChanged: (v) => role = v,
+        onConfirm: () async {
+          await supabase
+              .from('users')
+              .update({
+                'username': nameC.text.trim(),
+                'role': role,
+                'update_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id_user', user['id_user']);
 
-            await supabase
-                .from("users")
-                .update({
-                  "username": nameController.text.trim(),
-                  "update_at": DateTime.now().toIso8601String(),
-                })
-                .eq("id_user", user["id_user"]);
-
-            Navigator.pop(context);
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Username berhasil diupdate")),
-            );
-
-            fetchUsers();
-          },
-        );
-      },
+          Navigator.pop(context);
+          fetchUsers();
+        },
+      ),
     );
   }
 
-  // ================== INIT ==================
   @override
   void initState() {
     super.initState();
     fetchUsers();
   }
 
-  // ================== UI ==================
+  // ================== UI (TIDAK DIUBAH) ==================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -340,6 +289,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
         currentIndex: 2,
         onTap: (index) {
           if (index == 2) return;
+
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/dashboard');
           } else if (index == 1) {
@@ -351,6 +301,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           }
         },
       ),
+
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +322,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
-                onChanged: (value) => setState(() => searchUser(value)),
+                onChanged: searchUser,
                 decoration: InputDecoration(
                   hintText: "Cari Pengguna",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
@@ -404,24 +355,26 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredUsers.isEmpty
-                      ? Center(
-                          child: Text(
-                            "Data Pengguna Kosong",
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = filteredUsers[index];
-                            return _userCard(user);
-                          },
+                  ? Center(
+                      child: Text(
+                        "Data Riwayat Kosong",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: filteredUsers.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _userCard(filteredUsers[index]),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -429,7 +382,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     );
   }
 
-  // ================= USER CARD =================
   Widget _userCard(Map user) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -452,7 +404,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user["username"],
+                  user['username'],
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -460,7 +412,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  user["email"],
+                  user['email'],
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.grey.shade600,
@@ -471,7 +423,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.delete, size: 20),
-            onPressed: () => confirmDelete(user),
+            onPressed: () => deleteUser(user['id_user']),
           ),
           IconButton(
             icon: const Icon(Icons.edit, size: 20),

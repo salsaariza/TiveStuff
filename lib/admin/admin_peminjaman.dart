@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tivestuff1/widgets/header_back.dart';
 
-import 'package:tivestuff1/widgets/back_peminjam.dart';
-import '../widgets/nav_peminjam.dart';
-
-class AlatPeminjamScreen extends StatefulWidget {
-  const AlatPeminjamScreen({super.key});
+class AdminPeminjamScreen extends StatefulWidget {
+  const AdminPeminjamScreen({super.key});
 
   @override
-  State<AlatPeminjamScreen> createState() => _AlatScreenState();
+  State<AdminPeminjamScreen> createState() => _AlatScreenState();
 }
 
-class _AlatScreenState extends State<AlatPeminjamScreen> {
+class _AlatScreenState extends State<AdminPeminjamScreen> {
   final supabase = Supabase.instance.client;
 
   String selectedCategory = "Kategori";
@@ -110,11 +108,7 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF6C6D7A),
         onPressed: () {
-          Navigator.pushNamed(
-            context,
-            '/keranjangpeminjaman',
-            arguments: keranjang,
-          );
+          Navigator.pushNamed(context, '/adminkeranjang', arguments: keranjang);
         },
         child: Stack(
           alignment: Alignment.topRight,
@@ -137,28 +131,11 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
         ),
       ),
 
-      
-
-      // ================= NAVBAR =================
-      bottomNavigationBar: NavPeminjam(
-        currentIndex: 1,
-        onTap: (index) {
-          if (index == 1) return;
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/dashboardpeminjam');
-          } else if (index == 2) {
-            Navigator.pushReplacementNamed(context, '/pengajuanpeminjam');
-          } else if (index == 3) {
-            Navigator.pushReplacementNamed(context, '/pengembalianpeminjam');
-          }
-        },
-      ),
-
       // ================= BODY =================
       body: SafeArea(
         child: Column(
           children: [
-            const BackPeminjam(),
+            const Header(),
             const SizedBox(height: 16),
             _searchSection(),
             const SizedBox(height: 12),
@@ -193,7 +170,8 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
           TextField(
             onChanged: (value) {
               setState(() {
-                searchQuery = value; // ================= UPDATE QUERY =================
+                searchQuery =
+                    value; // ================= UPDATE QUERY =================
               });
             },
             decoration: InputDecoration(
@@ -214,7 +192,6 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
           ),
 
           const SizedBox(height: 15),
-
 
           // DROPDOWN KATEGORI
           CompositedTransformTarget(
@@ -314,36 +291,35 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
 
   // ================= GRID =================
   // ================= GRID =================
-Widget _gridAlat() {
-  final filteredAlat = alatFiltered;
+  Widget _gridAlat() {
+    final filteredAlat = alatFiltered;
 
-  if (filteredAlat.isEmpty) {
-    return const Center(
-      child: Text(
-        "Data alat kosong",
-        style: TextStyle(fontSize: 16, color: Colors.grey),
+    if (filteredAlat.isEmpty) {
+      return const Center(
+        child: Text(
+          "Data alat kosong",
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GridView.builder(
+        itemCount: filteredAlat.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.72,
+        ),
+        itemBuilder: (context, index) {
+          final alat = filteredAlat[index];
+          return _alatCard(alat);
+        },
       ),
     );
   }
-
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: GridView.builder(
-      itemCount: filteredAlat.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.72,
-      ),
-      itemBuilder: (context, index) {
-        final alat = filteredAlat[index];
-        return _alatCard(alat);
-      },
-    ),
-  );
-}
-
 
   // ================= CARD =================
   Widget _alatCard(Map alat) {
@@ -389,7 +365,8 @@ Widget _gridAlat() {
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(12),
-                image: alat["gambar_alat"] != null &&
+                image:
+                    alat["gambar_alat"] != null &&
                         alat["gambar_alat"].toString().isNotEmpty
                     ? DecorationImage(
                         image: NetworkImage(alat["gambar_alat"]),

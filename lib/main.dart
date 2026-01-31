@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tivestuff1/admin/admin_keranjang.dart';
 import 'package:tivestuff1/petugas/kartu_peminjaman.dart';
 
 // Screens umum
@@ -59,6 +60,7 @@ class MyApp extends StatelessWidget {
         '/pengguna': (context) => const PenggunaScreen(),
         '/riwayat': (context) => const RiwayatScreen(),
         '/aktivitas': (context) => const AktivitasScreen(),
+        '/adminkeranjang': (context) => const AdminKeranjang(),
 
         // ===== PETUGAS ROUTES =====
         '/dashboardpetugas': (context) => const DashboardPetugas(),

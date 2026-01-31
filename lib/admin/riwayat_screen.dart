@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tivestuff1/admin/admin_peminjaman.dart';
+import 'package:tivestuff1/admin/admin_pengembalian.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
 
@@ -30,7 +32,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     super.initState();
     fetchRiwayat();
 
- 
     searchController.addListener(() {
       setState(() {
         searchQuery = searchController.text.toLowerCase();
@@ -113,7 +114,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   List<Map<String, dynamic>> get filteredData {
     List<Map<String, dynamic>> data = riwayatData;
 
-    
     if (selectedFilter == 1) {
       data = data.where((e) => e['type'] == 'Peminjaman').toList();
     } else if (selectedFilter == 2) {
@@ -152,9 +152,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
       fetchRiwayat();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Riwayat berhasil dihapus")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Riwayat berhasil dihapus")));
     } catch (e) {
       print("Error deleteRiwayat: $e");
     }
@@ -351,8 +351,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                   await supabase
                                       .from('pengembalian')
                                       .update({
-                                        'tanggal_kembali':
-                                            tanggalKembali.toIso8601String(),
+                                        'tanggal_kembali': tanggalKembali
+                                            .toIso8601String(),
                                         'kondisi_alat': kondisi,
                                       })
                                       .eq('id_pengembalian', item['id']);
@@ -360,8 +360,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                   await supabase
                                       .from('peminjaman')
                                       .update({
-                                        'tanggal_kembali':
-                                            tanggalKembali.toIso8601String(),
+                                        'tanggal_kembali': tanggalKembali
+                                            .toIso8601String(),
                                       })
                                       .eq('id_peminjaman', item['id']);
                                 }
@@ -376,7 +376,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -393,6 +393,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF6C6D7A),
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminPeminjamScreen()),
+          ).then((_) {
+            // refresh setelah tambah peminjaman
+            fetchRiwayat();
+          });
+        },
+      ),
+
       bottomNavigationBar: AppBottomNav(
         currentIndex: 3,
         onTap: (index) {
@@ -403,6 +417,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           if (index == 4) Navigator.pushReplacementNamed(context, '/aktivitas');
         },
       ),
+
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,26 +484,26 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredData.isEmpty
-                      ? Center(
-                          child: Text(
-                            "Data Riwayat Kosong",
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: filteredData.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: _riwayatCard(filteredData[index]),
-                            );
-                          },
+                  ? Center(
+                      child: Text(
+                        "Data Riwayat Kosong",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: filteredData.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _riwayatCard(filteredData[index]),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -519,7 +534,29 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   Widget _riwayatCard(Map<String, dynamic> item) {
-    return Container(
+  return GestureDetector(
+    onTap: () {
+      // Jika peminjaman sudah disetujui → masuk ke halaman pengembalian
+      if (item['type'] == 'Peminjaman' &&
+          item['status'].toString().toLowerCase() == 'disetujui') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminPengembalianScreen(
+              peminjaman: {
+                'id': item['id'],
+                'nama': item['nama'],
+                'email': item['email'] ?? '-', 
+                'kelas': item['kelas'] ?? '-',
+                'tanggal_pinjam': item['tanggal_pinjam'],
+                'tanggal_kembali': item['tanggal_kembali'],
+              },
+            ),
+          ),
+        );
+      }
+    },
+    child: Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -549,6 +586,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
+                    /// TYPE (HIJAU) → Peminjaman / Pengembalian
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -559,7 +597,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        item['status'],
+                        item['type'], // Peminjaman / Pengembalian
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.white,
@@ -567,24 +605,26 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (item['type'] == 'Pengembalian')
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade600,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          item['kondisi'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.white,
-                          ),
+                    /// STATUS / KONDISI (OREN)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade600,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        item['type'] == 'Peminjaman'
+                            ? item['status'] // status peminjaman
+                            : item['kondisi'], // kondisi pengembalian
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.white,
                         ),
                       ),
+                    ),
                   ],
                 ),
               ],
@@ -604,6 +644,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }
+}
+
