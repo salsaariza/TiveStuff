@@ -3,6 +3,7 @@ import 'package:tivestuff1/widgets/back_petugas.dart';
 import 'package:tivestuff1/widgets/nav_petugas.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tivestuff1/petugas/kartu_peminjaman.dart';
 
 class PengajuanPeminjamanScreen extends StatefulWidget {
   const PengajuanPeminjamanScreen({super.key});
@@ -12,8 +13,7 @@ class PengajuanPeminjamanScreen extends StatefulWidget {
       _PengajuanPeminjamanScreenState();
 }
 
-class _PengajuanPeminjamanScreenState
-    extends State<PengajuanPeminjamanScreen> {
+class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
   final SupabaseClient supabase = Supabase.instance.client;
   List<Map<String, dynamic>> peminjaman = [];
   bool isLoading = true;
@@ -23,9 +23,12 @@ class _PengajuanPeminjamanScreenState
   void initState() {
     super.initState();
     fetchPeminjaman();
+    supabase
+        .from('peminjaman')
+        .stream(primaryKey: ['id_peminjaman'])
+        .listen((event) => fetchPeminjaman());
   }
 
-  // ================= FETCH DATA =================
   Future<void> fetchPeminjaman() async {
     setState(() => isLoading = true);
     try {
@@ -66,8 +69,8 @@ class _PengajuanPeminjamanScreenState
           'tanggal': e['tanggal_pinjam'] != null
               ? DateTime.parse(e['tanggal_pinjam']).toLocal()
               : null,
-          'barang': namaAlat,
-          'status': e['status_peminjaman'], // <<< PENTING
+          'alat': e['id_alat'] != null ? namaAlat : '-',
+          'status': e['status_peminjaman'],
         });
       }
 
@@ -79,14 +82,13 @@ class _PengajuanPeminjamanScreenState
     }
   }
 
-  // ================= SEARCH =================
   List<Map<String, dynamic>> get filteredPeminjaman {
     if (searchQuery.isEmpty) return peminjaman;
     return peminjaman.where((p) {
       return p['kode'].toLowerCase().contains(searchQuery.toLowerCase()) ||
           p['nama'].toLowerCase().contains(searchQuery.toLowerCase()) ||
           p['kelas'].toLowerCase().contains(searchQuery.toLowerCase()) ||
-          p['barang'].toLowerCase().contains(searchQuery.toLowerCase());
+          p['alat'].toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
   }
 
@@ -150,9 +152,7 @@ class _PengajuanPeminjamanScreenState
                     const SizedBox(height: 14),
                     Expanded(
                       child: isLoading
-                          ? const Center(
-                              child: CircularProgressIndicator(),
-                            )
+                          ? const Center(child: CircularProgressIndicator())
                           : ListView.builder(
                               itemCount: filteredPeminjaman.length,
                               itemBuilder: (context, index) {
@@ -165,7 +165,7 @@ class _PengajuanPeminjamanScreenState
                                   tanggal: data['tanggal'] != null
                                       ? "${data['tanggal'].day}-${data['tanggal'].month}-${data['tanggal'].year}"
                                       : '-',
-                                  barang: data['barang'],
+                                  alat: data['alat'],
                                   status: data['status'],
                                 );
                               },
@@ -189,7 +189,7 @@ class PengajuanCard extends StatefulWidget {
   final String nama;
   final String kelas;
   final String tanggal;
-  final String barang;
+  final String alat;
   final String status;
 
   const PengajuanCard({
@@ -199,7 +199,7 @@ class PengajuanCard extends StatefulWidget {
     required this.nama,
     required this.kelas,
     required this.tanggal,
-    required this.barang,
+    required this.alat,
     required this.status,
   });
 
@@ -226,6 +226,15 @@ class _PengajuanCardState extends State<PengajuanCard> {
     setState(() => status = newStatus);
   }
 
+  void _openKartuPeminjaman() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => KartuPeminjamanScreen(idPeminjaman: 0),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -246,24 +255,19 @@ class _PengajuanCardState extends State<PengajuanCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
-              Text(widget.kode),
-              const Spacer(),
-              Text(widget.tanggal),
-            ],
+            children: [Text(widget.kode), const Spacer(), Text(widget.tanggal)],
           ),
           const SizedBox(height: 6),
           Text(
             widget.nama,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          Text(widget.kelas,
-              style: const TextStyle(color: Colors.grey)),
+          Text(widget.kelas, style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 6),
-          Text(widget.barang),
+          Text(widget.alat),
           const SizedBox(height: 12),
 
-          // ===== ACTION (TANPA UBAH UI) =====
+          // ===== ACTION =====
           if (status == 'menunggu')
             Row(
               children: [
@@ -283,21 +287,26 @@ class _PengajuanCardState extends State<PengajuanCard> {
               ],
             )
           else if (status == 'disetujui')
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE4F4D8),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.green),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.check_circle, color: Colors.green, size: 18),
-                  SizedBox(width: 8),
-                  Text("Peminjaman Disetujui",
-                      style: TextStyle(color: Colors.green)),
-                ],
+            InkWell(
+              onTap: _openKartuPeminjaman, 
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F4D8),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.check_circle, color: Colors.green, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      "Peminjaman Disetujui",
+                      style: TextStyle(color: Colors.green),
+                    ),
+                  ],
+                ),
               ),
             )
           else
@@ -313,8 +322,10 @@ class _PengajuanCardState extends State<PengajuanCard> {
                 children: const [
                   Icon(Icons.cancel, color: Colors.red, size: 18),
                   SizedBox(width: 8),
-                  Text("Peminjaman Ditolak",
-                      style: TextStyle(color: Colors.red)),
+                  Text(
+                    "Peminjaman Ditolak",
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ],
               ),
             ),

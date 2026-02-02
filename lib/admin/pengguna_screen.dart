@@ -275,7 +275,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     fetchUsers();
   }
 
-  // ================== UI (TIDAK DIUBAH) ==================
+  // ================== UI ==================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -384,7 +384,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
   Widget _userCard(Map user) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,

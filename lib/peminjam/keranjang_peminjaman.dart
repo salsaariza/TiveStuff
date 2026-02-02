@@ -19,13 +19,41 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
 
   List<Map<String, dynamic>> keranjang = [];
 
+  /// ================= DROPDOWN KELAS =================
+  List<String> listKelas = [];
+  String? selectedKelas;
+  bool loadingKelas = true;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
     final args = ModalRoute.of(context)?.settings.arguments;
 
     if (args != null && args is List<Map<String, dynamic>>) {
       keranjang = List<Map<String, dynamic>>.from(args);
+    }
+
+    fetchKelas();
+  }
+
+  /// ================= FETCH DATA KELAS =================
+  Future<void> fetchKelas() async {
+    try {
+      final res = await supabase.from('peminjaman').select('tingkatan_kelas');
+
+      final temp = res
+          .map((e) => e['tingkatan_kelas'].toString())
+          .toSet()
+          .toList();
+
+      setState(() {
+        listKelas = temp;
+        loadingKelas = false;
+      });
+    } catch (e) {
+      debugPrint("ERROR FETCH KELAS: $e");
+      setState(() => loadingKelas = false);
     }
   }
 
@@ -78,7 +106,10 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
           const SizedBox(height: 12),
 
           /// LIST ITEM
-          ...keranjang.map((alat) {
+          ...keranjang.asMap().entries.map((entry) {
+            final index = entry.key;
+            final alat = entry.value;
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _buildItemCard(
@@ -86,12 +117,59 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
                 jumlah: '1',
                 onDelete: () {
                   setState(() {
-                    keranjang.remove(alat);
+                    keranjang.removeAt(index);
                   });
                 },
               ),
             );
           }).toList(),
+
+          const SizedBox(height: 18),
+
+          /// DROPDOWN KELAS
+          Text(
+            "Pilih Kelas",
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          loadingKelas
+              ? const Center(child: CircularProgressIndicator())
+              : Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedKelas,
+                      hint: Text(
+                        "Pilih Kelas",
+                        style: GoogleFonts.poppins(fontSize: 12),
+                      ),
+                      isExpanded: true,
+                      items: listKelas.map((kelas) {
+                        return DropdownMenuItem(
+                          value: kelas,
+                          child: Text(
+                            kelas,
+                            style: GoogleFonts.poppins(fontSize: 12),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedKelas = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
 
           const SizedBox(height: 18),
 
@@ -192,26 +270,30 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
   Future<void> _ajukanPeminjaman() async {
     try {
       final user = supabase.auth.currentUser;
+
       if (user == null) {
-        _showSnack('User belum login');
+        _showSnack("User belum login");
         return;
       }
 
       if (keranjang.isEmpty) {
-        _showSnack('Keranjang kosong');
+        _showSnack("Keranjang kosong");
         return;
       }
 
-      for (final item in keranjang) {
-        if (item['id_alat'] == null) {
-          _showSnack('ID alat tidak valid');
-          return;
-        }
+      if (selectedKelas == null) {
+        _showSnack("Kelas belum dipilih");
+        return;
       }
 
       if (tanggalPinjamController.text.isEmpty ||
           tanggalController.text.isEmpty) {
-        _showSnack('Tanggal belum diisi');
+        _showSnack("Tanggal belum diisi");
+        return;
+      }
+
+      if (keranjang.first['id_alat'] == null) {
+        _showSnack("ID alat tidak valid");
         return;
       }
 
@@ -224,6 +306,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
           .insert({
             'id_user': user.id,
             'id_alat': keranjang.first['id_alat'],
+            'tingkatan_kelas': selectedKelas,
             'tanggal_pinjam': tanggalPinjam.toIso8601String(),
             'tanggal_kembali': tanggalKembali.toIso8601String(),
             'status_peminjaman': 'menunggu',
@@ -247,18 +330,17 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
 
       if (!mounted) return;
 
-      _showSnack('Peminjaman berhasil diajukan');
+      _showSnack("Peminjaman berhasil diajukan");
       Navigator.pushReplacementNamed(context, '/pengajuanpeminjam');
     } catch (e) {
-      debugPrint('ERROR PEMINJAMAN: $e');
-      _showSnack('Gagal menyimpan data');
+      debugPrint("ERROR PEMINJAMAN: $e");
+      _showSnack("Gagal menyimpan data");
     }
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildItemCard({

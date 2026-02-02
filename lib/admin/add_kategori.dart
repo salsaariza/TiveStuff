@@ -80,13 +80,20 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
   /// ================= DELETE =================
   Future<void> deleteKategori(int id) async {
-    try {
-      await supabase.from('kategori').delete().eq('id_kategori', id);
-      await fetchKategori();
-    } catch (e) {
-      debugPrint("ERROR DELETE KATEGORI: $e");
-    }
+  try {
+    await supabase
+        .from('kategori')
+        .update({'delete_at': DateTime.now().toIso8601String()})
+        .eq('id_kategori', id);
+
+    // UI otomatis update karena listener kategori
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text("Kategori berhasil dihapus")));
+  } catch (e) {
+    debugPrint("ERROR DELETE KATEGORI: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -214,8 +221,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
-
-            // ✅ FORM VALIDASI (UI TETAP SAMA)
             child: Form(
               key: _formKey,
               child: Column(
@@ -238,8 +243,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
                     style: GoogleFonts.poppins(fontSize: 12),
                   ),
                   const SizedBox(height: 6),
-
-                  // ✅ VALIDASI WAJIB ISI
                   TextFormField(
                     controller: _kategoriController,
                     decoration: InputDecoration(
@@ -282,7 +285,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
                             backgroundColor: const Color(0xFF6C6D7A),
                           ),
                           onPressed: () {
-                            // ✅ CEK VALIDASI
                             if (_formKey.currentState!.validate()) {
                               final nama =
                                   _kategoriController.text.trim();

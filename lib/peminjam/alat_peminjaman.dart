@@ -313,7 +313,6 @@ class _AlatScreenState extends State<AlatPeminjamScreen> {
   }
 
   // ================= GRID =================
-  // ================= GRID =================
 Widget _gridAlat() {
   final filteredAlat = alatFiltered;
 
@@ -360,7 +359,7 @@ Widget _gridAlat() {
           : () {
               setState(() {
                 keranjang.add({
-                  "id_alat": alat["id_alat"], // ✅ WAJIB
+                  "id_alat": alat["id_alat"],
                   "nama_alat": namaAlat,
                   "stok": stok,
                   "spesifikasi_alat": spesifikasi,
@@ -412,7 +411,9 @@ Widget _gridAlat() {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
                 "Stok : $stok",
-                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey),
+                style: GoogleFonts.poppins(fontSize: 13, 
+                color: Colors.black,
+                fontWeight: .w500),
               ),
             ),
             Padding(

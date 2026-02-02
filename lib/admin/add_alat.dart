@@ -90,21 +90,15 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
   }
 
   /// ================= SUBMIT FORM =================
+  /// ================= SUBMIT FORM REALTIME =================
   Future<void> submitForm() async {
-    // ✅ VALIDASI FORM INPUT
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    // ✅ VALIDASI DROPDOWN
     if (selectedKategori == null) {
-      setState(() {
-        kategoriError = "Kategori wajib dipilih!";
-      });
+      setState(() => kategoriError = "Kategori wajib dipilih!");
       return;
     }
 
-    // ✅ VALIDASI GAMBAR
     if ((kIsWeb && selectedWebImage == null) ||
         (!kIsWeb && selectedImage == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +107,6 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
       return;
     }
 
-    // ✅ VALIDASI ANGKA
     final harga = double.tryParse(hargaController.text);
     final stok = int.tryParse(stokController.text);
 
@@ -134,46 +127,52 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
     setState(() => isLoading = true);
 
     try {
-      // ================= UPLOAD GAMBAR =================
       final fileName = "alat_${DateTime.now().millisecondsSinceEpoch}.png";
 
+      // UPLOAD IMAGE
       if (kIsWeb) {
-        await supabase.storage.from('alat_image').uploadBinary(
+        await supabase.storage
+            .from('alat_image')
+            .uploadBinary(
               fileName,
               selectedWebImage!,
               fileOptions: const FileOptions(contentType: "image/png"),
             );
       } else {
-        await supabase.storage.from('alat_image').upload(
+        await supabase.storage
+            .from('alat_image')
+            .upload(
               fileName,
               selectedImage!,
               fileOptions: const FileOptions(contentType: "image/png"),
             );
       }
 
-      final imageUrl =
-          supabase.storage.from('alat_image').getPublicUrl(fileName);
+      final imageUrl = supabase.storage
+          .from('alat_image')
+          .getPublicUrl(fileName);
 
-      // ================= INSERT DATABASE =================
-      final response = await supabase.from('alat').insert({
+      await supabase.from('alat').insert({
         'nama_alat': namaController.text.trim(),
         'id_kategori': selectedKategori!['id_kategori'],
         'harga_alat': harga,
         'stok': stok,
         'spesifikasi_alat': spesifikasiController.text.trim(),
         'gambar_alat': imageUrl,
-      }).select();
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Alat berhasil ditambahkan")),
       );
 
-      Navigator.pop(context, response[0]);
+      Navigator.pop(context);
+
+      
     } catch (e) {
       debugPrint("ERROR ADD ALAT: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal menambahkan alat")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Gagal menambahkan alat")));
     } finally {
       setState(() => isLoading = false);
     }
@@ -374,10 +373,7 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
             padding: const EdgeInsets.only(top: 4, left: 8),
             child: Text(
               kategoriError!,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: Colors.red,
-              ),
+              style: GoogleFonts.poppins(fontSize: 11, color: Colors.red),
             ),
           ),
       ],

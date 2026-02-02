@@ -336,7 +336,7 @@ class _AlatScreenState extends State<AdminPeminjamScreen> {
           : () {
               setState(() {
                 keranjang.add({
-                  "id_alat": alat["id_alat"], // ✅ WAJIB
+                  "id_alat": alat["id_alat"],
                   "nama_alat": namaAlat,
                   "stok": stok,
                   "spesifikasi_alat": spesifikasi,

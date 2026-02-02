@@ -64,7 +64,14 @@ class _PengembalianContentState extends State<_PengembalianContent> {
     fetchPengembalian();
   }
 
-  // ================= FETCH DATA FIX =================
+  // ================= FORMAT TANGGAL =================
+  String formatTanggal(dynamic t) {
+    if (t == null) return '-';
+    final s = t.toString();
+    return s.length >= 10 ? s.substring(0, 10) : s;
+  }
+
+  // ================= FETCH DATA =================
   Future<void> fetchPengembalian() async {
     try {
       setState(() => isLoading = true);
@@ -94,12 +101,20 @@ class _PengembalianContentState extends State<_PengembalianContent> {
         temp.add({
           'id_pengembalian': e['id_pengembalian'],
           'id_peminjaman': p['id_peminjaman'],
-          'kode': 'PJ ${p['id_peminjaman'].toString().padLeft(4, '0')}',
-          'nama': p['users']['username'],
-          'kelas': p['tingkatan_kelas'],
-          'alat': p['alat']['nama_alat'],
+
+          'kode':
+              'PJ ${p['id_peminjaman'].toString().padLeft(4, '0')}',
+
+        
+          'nama': p['users']?['username'] ?? '-',
+          'kelas': p['tingkatan_kelas'] ?? '-',
+          'alat': p['alat']?['nama_alat'] ?? '-',
+
+          
           'tanggal_pinjam': p['tanggal_pinjam'],
           'tanggal_kembali': e['tanggal_kembali'],
+
+         
           'terlambat': e['hari_terlambat'] ?? 0,
         });
       }
@@ -109,16 +124,20 @@ class _PengembalianContentState extends State<_PengembalianContent> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint(e.toString());
+      debugPrint("ERROR FETCH: $e");
       setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ================= FILTER SEARCH FIX =================
     final filtered = dataPengembalian.where((e) {
-      return e['kode'].toLowerCase().contains(search.toLowerCase()) ||
-          e['nama'].toLowerCase().contains(search.toLowerCase());
+      final kode = (e['kode'] ?? '').toString().toLowerCase();
+      final nama = (e['nama'] ?? '').toString().toLowerCase();
+
+      return kode.contains(search.toLowerCase()) ||
+          nama.contains(search.toLowerCase());
     }).toList();
 
     return Padding(
@@ -165,14 +184,12 @@ class _PengembalianContentState extends State<_PengembalianContent> {
                         id: d['kode'],
                         nama: d['nama'],
                         kelas: d['kelas'],
-                        tanggalPinjam: d['tanggal_pinjam'].toString().substring(
-                          0,
-                          10,
-                        ),
+
+                        tanggalPinjam: formatTanggal(d['tanggal_pinjam']),
                         alat: d['alat'],
-                        tanggalKembali: d['tanggal_kembali']
-                            .toString()
-                            .substring(0, 10),
+                        tanggalKembali:
+                            formatTanggal(d['tanggal_kembali']),
+
                         button: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: terlambat
@@ -192,10 +209,9 @@ class _PengembalianContentState extends State<_PengembalianContent> {
                             );
 
                             if (result == true) {
-                              fetchPengembalian(); // 🔁 refresh list
+                              fetchPengembalian();
                             }
                           },
-
                           child: Text(
                             terlambat
                                 ? 'Konfirmasi Pengembalian Terlambat'

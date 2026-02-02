@@ -36,20 +36,23 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
       final data = await supabase
           .from('peminjaman')
           .select('''
-            id_peminjaman,
-            tanggal_pinjam,
-            status_peminjaman,
-            users!peminjaman_id_user_fkey (
-              username,
-              email
-            ),
-            detail_peminjaman (
-              id_alat,
-              alat (
-                nama_alat
-              )
+          id_peminjaman,
+          tanggal_pinjam,
+          status_peminjaman,
+
+          users!peminjaman_id_user_fkey (
+            username,
+            email
+          ),
+
+          detail_peminjaman (
+            id_alat,
+
+            alat:alat!detail_peminjaman_id_alat_fkey (
+              nama_alat
             )
-          ''')
+          )
+        ''')
           .eq('id_user', user.id)
           .order('created_at', ascending: false);
 
@@ -58,7 +61,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('ERROR FETCH PENGAJUAN: $e');
+      debugPrint("ERROR FETCH PENGAJUAN: $e");
       setState(() {
         isLoading = false;
       });
@@ -112,29 +115,26 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                     /// ================= CONTENT =================
                     Expanded(
                       child: isLoading
-                          ? const Center(
-                              child: CircularProgressIndicator(),
-                            )
+                          ? const Center(child: CircularProgressIndicator())
                           : pengajuanList.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    'Belum ada pengajuan',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  physics:
-                                      const BouncingScrollPhysics(),
-                                  itemCount: pengajuanList.length,
-                                  itemBuilder: (context, index) {
-                                    return PengajuanCard(
-                                      data: pengajuanList[index],
-                                    );
-                                  },
+                          ? Center(
+                              child: Text(
+                                'Belum ada pengajuan',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.grey,
                                 ),
+                              ),
+                            )
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: pengajuanList.length,
+                              itemBuilder: (context, index) {
+                                return PengajuanCard(
+                                  data: pengajuanList[index],
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -159,9 +159,7 @@ class PengajuanCard extends StatelessWidget {
 
     final String alat = detail.isEmpty
         ? '-'
-        : detail
-            .map((e) => e['alat']?['nama_alat'] ?? '-')
-            .join(', ');
+        : detail.map((e) => e['alat']?['nama_alat'] ?? '-').join(', ');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -194,10 +192,7 @@ class PengajuanCard extends StatelessWidget {
                 ),
               ),
               Text(
-                data['tanggal_pinjam']
-                        ?.toString()
-                        .substring(0, 10) ??
-                    '-',
+                data['tanggal_pinjam']?.toString().substring(0, 10) ?? '-',
                 style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 15,
@@ -264,13 +259,10 @@ class PengajuanCard extends StatelessWidget {
               const SizedBox(width: 8),
               Container(
                 height: 26,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _statusColor(
-                    data['status_peminjaman'],
-                  ),
+                  color: _statusColor(data['status_peminjaman']),
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Text(

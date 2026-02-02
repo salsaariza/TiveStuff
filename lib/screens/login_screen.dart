@@ -101,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Image.asset('assets/images/logotivestuff.png', width: 200),
                 const SizedBox(height: 10),
+          
                 Text(
                   'TiveStuff',
                   style: GoogleFonts.poppins(

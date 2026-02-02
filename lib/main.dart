@@ -20,7 +20,7 @@ import 'petugas/peminjaman_screen.dart';
 import 'petugas/pengembalian_screen.dart';
 import 'petugas/laporan_screen.dart';
 import 'screens/dashboard_petugas.dart';
-import 'petugas/kartu_peminjaman.dart';
+import 'package:tivestuff1/petugas/kartu_peminjaman.dart';
 
 // Peminjam Screens
 import 'peminjam/alat_peminjaman.dart';
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
         '/peminjaman': (context) => const PengajuanPeminjamanScreen(),
         '/pengembalian': (context) => const PengembalianScreen(),
         '/laporan': (context) => const LaporanScreen(),
-        '/kartupeminjaman': (context) => const DetailStrukScreen(),
+        '/kartupeminjaman': (context) => KartuPeminjamanScreen(idPeminjaman: 0),
 
         // ===== PEMINJAM ROUTES =====
         '/dashboardpeminjam': (context) => const DashboardPeminjam(),
