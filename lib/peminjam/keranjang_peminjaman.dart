@@ -19,41 +19,38 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
 
   List<Map<String, dynamic>> keranjang = [];
 
-  /// ================= DROPDOWN KELAS =================
-  List<String> listKelas = [];
+  /// ================= DROPDOWN KELAS (ENUM SUPABASE) =================
+  final List<String> listKelas = [
+    'X TO 1',
+    'X TO 2',
+    'X TO 3',
+    'X TO 4',
+    'X TO 5',
+    'X TO 6',
+    'X TO 7',
+    'XI TKR 1',
+    'XI TKR 2',
+    'XI TKR 3',
+    'XI TKR 4',
+    'XI TKR 5',
+    'XI TKR 6',
+    'XII TKR 1',
+    'XII TKR 2',
+    'XII TKR 3',
+    'XII TKR 4',
+    'XII TKR 5',
+    'XII TKR 6',
+  ];
+
   String? selectedKelas;
-  bool loadingKelas = true;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
     final args = ModalRoute.of(context)?.settings.arguments;
-
     if (args != null && args is List<Map<String, dynamic>>) {
       keranjang = List<Map<String, dynamic>>.from(args);
-    }
-
-    fetchKelas();
-  }
-
-  /// ================= FETCH DATA KELAS =================
-  Future<void> fetchKelas() async {
-    try {
-      final res = await supabase.from('peminjaman').select('tingkatan_kelas');
-
-      final temp = res
-          .map((e) => e['tingkatan_kelas'].toString())
-          .toSet()
-          .toList();
-
-      setState(() {
-        listKelas = temp;
-        loadingKelas = false;
-      });
-    } catch (e) {
-      debugPrint("ERROR FETCH KELAS: $e");
-      setState(() => loadingKelas = false);
     }
   }
 
@@ -137,50 +134,44 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
           ),
           const SizedBox(height: 6),
 
-          loadingKelas
-              ? const Center(child: CircularProgressIndicator())
-              : Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedKelas,
-                      hint: Text(
-                        "Pilih Kelas",
-                        style: GoogleFonts.poppins(fontSize: 12),
-                      ),
-                      isExpanded: true,
-                      items: listKelas.map((kelas) {
-                        return DropdownMenuItem(
-                          value: kelas,
-                          child: Text(
-                            kelas,
-                            style: GoogleFonts.poppins(fontSize: 12),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedKelas = value;
-                        });
-                      },
-                    ),
-                  ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedKelas,
+                hint: Text(
+                  "Pilih Kelas",
+                  style: GoogleFonts.poppins(fontSize: 12),
                 ),
+                isExpanded: true,
+                items: listKelas.map((kelas) {
+                  return DropdownMenuItem(
+                    value: kelas,
+                    child: Text(
+                      kelas,
+                      style: GoogleFonts.poppins(fontSize: 12),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedKelas = value;
+                  });
+                },
+              ),
+            ),
+          ),
 
           const SizedBox(height: 18),
 
           /// TANGGAL PEMINJAMAN
           Text(
             "Tanggal Peminjaman",
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
-            ),
+            style: GoogleFonts.poppins(fontSize: 12),
           ),
           const SizedBox(height: 6),
           _buildTanggalField(tanggalPinjamController),
@@ -190,11 +181,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
           /// TANGGAL PENGEMBALIAN
           Text(
             "Tanggal Pengembalian",
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
-            ),
+            style: GoogleFonts.poppins(fontSize: 12),
           ),
           const SizedBox(height: 6),
           _buildTanggalField(tanggalController),
@@ -225,38 +212,6 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTanggalField(TextEditingController controller) {
-    return TextField(
-      controller: controller,
-      readOnly: true,
-      decoration: InputDecoration(
-        hintText: "dd/MM/yyyy",
-        suffixIcon: const Icon(Icons.calendar_today, size: 18),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      onTap: () async {
-        DateTime? picked = await showDatePicker(
-          context: context,
-          initialDate: DateTime.now(),
-          firstDate: DateTime.now(),
-          lastDate: DateTime(2100),
-        );
-
-        if (picked != null) {
-          controller.text =
-              "${picked.day.toString().padLeft(2, '0')}/"
-              "${picked.month.toString().padLeft(2, '0')}/"
-              "${picked.year}";
-        }
-      },
     );
   }
 
@@ -292,39 +247,30 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
         return;
       }
 
-      if (keranjang.first['id_alat'] == null) {
-        _showSnack("ID alat tidak valid");
-        return;
-      }
-
       final tanggalPinjam = _parseTanggal(tanggalPinjamController.text);
       final tanggalKembali = _parseTanggal(tanggalController.text);
 
-      /// ================= INSERT PEMINJAMAN =================
+      /// INSERT PEMINJAMAN
       final peminjaman = await supabase
           .from('peminjaman')
           .insert({
             'id_user': user.id,
-            'id_alat': keranjang.first['id_alat'],
             'tingkatan_kelas': selectedKelas,
             'tanggal_pinjam': tanggalPinjam.toIso8601String(),
             'tanggal_kembali': tanggalKembali.toIso8601String(),
             'status_peminjaman': 'menunggu',
-            'created_by': user.id,
           })
           .select('id_peminjaman')
           .single();
 
       final int idPeminjaman = peminjaman['id_peminjaman'];
 
-      /// ================= INSERT DETAIL =================
+      /// INSERT DETAIL
       for (final alat in keranjang) {
         await supabase.from('detail_peminjaman').insert({
           'id_peminjaman': idPeminjaman,
           'id_alat': alat['id_alat'],
           'jumlah': 1,
-          'id_user': user.id,
-          'created_by': user.id,
         });
       }
 
@@ -341,6 +287,38 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
   void _showSnack(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildTanggalField(TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      readOnly: true,
+      decoration: InputDecoration(
+        hintText: "dd/MM/yyyy",
+        suffixIcon: const Icon(Icons.calendar_today, size: 18),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      onTap: () async {
+        DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime.now(),
+          lastDate: DateTime(2100),
+        );
+
+        if (picked != null) {
+          controller.text =
+              "${picked.day.toString().padLeft(2, '0')}/"
+              "${picked.month.toString().padLeft(2, '0')}/"
+              "${picked.year}";
+        }
+      },
+    );
   }
 
   Widget _buildItemCard({

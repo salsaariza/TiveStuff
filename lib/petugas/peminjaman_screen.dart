@@ -15,6 +15,7 @@ class PengajuanPeminjamanScreen extends StatefulWidget {
 
 class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
   final SupabaseClient supabase = Supabase.instance.client;
+
   List<Map<String, dynamic>> peminjaman = [];
   bool isLoading = true;
   String searchQuery = "";
@@ -23,67 +24,78 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
   void initState() {
     super.initState();
     fetchPeminjaman();
-    supabase
-        .from('peminjaman')
-        .stream(primaryKey: ['id_peminjaman'])
-        .listen((event) => fetchPeminjaman());
+
+    // ===== REALTIME =====
+    supabase.from('peminjaman').stream(primaryKey: ['id_peminjaman']).listen((
+      data,
+    ) {
+      fetchPeminjaman(); 
+    });
   }
 
   Future<void> fetchPeminjaman() async {
-    setState(() => isLoading = true);
-    try {
-      final data = await supabase
-          .from('peminjaman')
-          .select()
-          .order('created_at', ascending: false);
+  setState(() => isLoading = true);
 
-      List<Map<String, dynamic>> temp = [];
+  try {
+    final data = await supabase
+        .from('peminjaman')
+        .select()
+        .order('created_at', ascending: false);
 
-      for (var e in data) {
-        String namaUser = '-';
-        String namaAlat = '-';
+    List<Map<String, dynamic>> temp = [];
 
-        if (e['id_user'] != null) {
-          final user = await supabase
-              .from('users')
-              .select('username')
-              .eq('id_user', e['id_user'])
-              .single();
-          namaUser = user['username'] ?? '-';
-        }
+    for (var e in data) {
+      String namaUser = '-';
+      String namaAlat = '-';
 
-        if (e['id_alat'] != null) {
-          final alat = await supabase
-              .from('alat')
-              .select('nama_alat')
-              .eq('id_alat', e['id_alat'])
-              .single();
-          namaAlat = alat['nama_alat'] ?? '-';
-        }
+      if (e['id_user'] != null) {
+        final user = await supabase
+            .from('users')
+            .select('username')
+            .eq('id_user', e['id_user'])
+            .maybeSingle();
 
-        temp.add({
-          'id': e['id_peminjaman'],
-          'kode': 'PJ ${e['id_peminjaman'].toString().padLeft(4, '0')}',
-          'nama': namaUser,
-          'kelas': e['tingkatan_kelas'] ?? '-',
-          'tanggal': e['tanggal_pinjam'] != null
-              ? DateTime.parse(e['tanggal_pinjam']).toLocal()
-              : null,
-          'alat': e['id_alat'] != null ? namaAlat : '-',
-          'status': e['status_peminjaman'],
-        });
+        namaUser = user?['username'] ?? '-';
       }
 
-      setState(() => peminjaman = temp);
-    } catch (e) {
-      debugPrint('Error: $e');
-    } finally {
-      setState(() => isLoading = false);
-    }
-  }
+      if (e['id_alat'] != null) {
+        final alat = await supabase
+            .from('alat')
+            .select('nama_alat')
+            .eq('id_alat', e['id_alat'])
+            .maybeSingle();
 
+        namaAlat = alat?['nama_alat'] ?? '-';
+      }
+
+      temp.add({
+        'id': e['id_peminjaman'],
+        'kode': 'PJ ${e['id_peminjaman'].toString().padLeft(4, '0')}',
+        'nama': namaUser,
+        'kelas': e['tingkatan_kelas'] ?? '-',
+        'tanggal': e['tanggal_pinjam'] != null
+            ? DateTime.parse(e['tanggal_pinjam']).toLocal()
+            : null,
+        'alat': namaAlat,
+        'status': e['status_peminjaman'],
+      });
+    }
+
+    setState(() {
+      peminjaman = temp;
+      isLoading = false;
+    });
+  } catch (e) {
+    debugPrint('ERROR FETCH: $e');
+    setState(() => isLoading = false);
+  }
+}
+
+
+  // ================= FILTER =================
   List<Map<String, dynamic>> get filteredPeminjaman {
     if (searchQuery.isEmpty) return peminjaman;
+
     return peminjaman.where((p) {
       return p['kode'].toLowerCase().contains(searchQuery.toLowerCase()) ||
           p['nama'].toLowerCase().contains(searchQuery.toLowerCase()) ||
@@ -92,6 +104,7 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
     }).toList();
   }
 
+  // ================= BUILD UI =================
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -182,7 +195,7 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
   }
 }
 
-// ================= CARD =================
+// ================= CARD (TIDAK DIUBAH) =================
 class PengajuanCard extends StatefulWidget {
   final int id;
   final String kode;
@@ -222,15 +235,13 @@ class _PengajuanCardState extends State<PengajuanCard> {
         .from('peminjaman')
         .update({'status_peminjaman': newStatus})
         .eq('id_peminjaman', widget.id);
-
-    setState(() => status = newStatus);
   }
 
   void _openKartuPeminjaman() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => KartuPeminjamanScreen(idPeminjaman: 0),
+        builder: (_) => KartuPeminjamanScreen(idPeminjaman: widget.id),
       ),
     );
   }
@@ -267,7 +278,6 @@ class _PengajuanCardState extends State<PengajuanCard> {
           Text(widget.alat),
           const SizedBox(height: 12),
 
-          // ===== ACTION =====
           if (status == 'menunggu')
             Row(
               children: [
@@ -288,7 +298,7 @@ class _PengajuanCardState extends State<PengajuanCard> {
             )
           else if (status == 'disetujui')
             InkWell(
-              onTap: _openKartuPeminjaman, 
+              onTap: _openKartuPeminjaman,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(

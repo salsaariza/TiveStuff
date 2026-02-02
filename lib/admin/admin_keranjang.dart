@@ -21,9 +21,32 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
   /// ================= STATE USER =================
   List<Map<String, dynamic>> userList = [];
   String? selectedUserId;
-  Map<String, Map<String, dynamic>> userMap = {};
-
   bool loadingUsers = true;
+
+  /// ================= STATE KELAS (ENUM) =================
+  final List<String> kelasList = [
+    'X TO 1',
+    'X TO 2',
+    'X TO 3',
+    'X TO 4',
+    'X TO 5',
+    'X TO 6',
+    'X TO 7',
+    'XI TKR 1',
+    'XI TKR 2',
+    'XI TKR 3',
+    'XI TKR 4',
+    'XI TKR 5',
+    'XI TKR 6',
+    'XII TKR 1',
+    'XII TKR 2',
+    'XII TKR 3',
+    'XII TKR 4',
+    'XII TKR 5',
+    'XII TKR 6',
+  ];
+
+  String? selectedKelas;
 
   @override
   void didChangeDependencies() {
@@ -43,7 +66,7 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
     try {
       final response = await supabase
           .from('users')
-          .select('id_user, username, role')
+          .select('id_user, username')
           .eq('role', 'peminjam')
           .order('username', ascending: true);
 
@@ -51,14 +74,12 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
 
       setState(() {
         userList = users;
-        userMap = {for (var u in users) u['id_user'] as String: u};
         selectedUserId = users.isNotEmpty
             ? users.first['id_user'] as String
             : null;
         loadingUsers = false;
       });
     } catch (e) {
-      debugPrint('ERROR FETCH USERS: $e');
       loadingUsers = false;
       _showSnack('Gagal memuat daftar peminjam');
     }
@@ -131,14 +152,7 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
           const SizedBox(height: 18),
 
           /// DROPDOWN PILIH USER
-          Text(
-            "Pilih Peminjam",
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
-            ),
-          ),
+          Text("Pilih Peminjam", style: GoogleFonts.poppins(fontSize: 12)),
           const SizedBox(height: 6),
 
           loadingUsers
@@ -150,30 +164,39 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
                         (u) => DropdownMenuItem<String>(
                           value: u['id_user'] as String,
                           child: Text(
-                            u['username'] ?? '-',
+                            u['username'],
                             style: GoogleFonts.poppins(fontSize: 13),
                           ),
                         ),
                       )
                       .toList(),
                   onChanged: (val) {
-                    setState(() {
-                      selectedUserId = val;
-                    });
+                    setState(() => selectedUserId = val);
                   },
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
+                  decoration: _dropdownDecoration(),
                 ),
+
+          const SizedBox(height: 18),
+
+          /// DROPDOWN TINGKATAN KELAS
+          Text("Tingkatan Kelas", style: GoogleFonts.poppins(fontSize: 12)),
+          const SizedBox(height: 6),
+
+          DropdownButtonFormField<String>(
+            value: selectedKelas,
+            items: kelasList
+                .map(
+                  (k) => DropdownMenuItem<String>(
+                    value: k,
+                    child: Text(k, style: GoogleFonts.poppins(fontSize: 13)),
+                  ),
+                )
+                .toList(),
+            onChanged: (val) {
+              setState(() => selectedKelas = val);
+            },
+            decoration: _dropdownDecoration(),
+          ),
 
           const SizedBox(height: 18),
 
@@ -227,23 +250,28 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
   }
 
   Future<void> _ajukanPeminjaman() async {
+    if (selectedUserId == null) {
+      _showSnack('Peminjam belum dipilih');
+      return;
+    }
+
+    if (selectedKelas == null) {
+      _showSnack('Tingkatan kelas belum dipilih');
+      return;
+    }
+
+    if (keranjang.isEmpty) {
+      _showSnack('Keranjang kosong');
+      return;
+    }
+
+    if (tanggalPinjamController.text.isEmpty ||
+        tanggalController.text.isEmpty) {
+      _showSnack('Tanggal belum diisi');
+      return;
+    }
+
     try {
-      if (selectedUserId == null) {
-        _showSnack('Peminjam belum dipilih');
-        return;
-      }
-
-      if (keranjang.isEmpty) {
-        _showSnack('Keranjang kosong');
-        return;
-      }
-
-      if (tanggalPinjamController.text.isEmpty ||
-          tanggalController.text.isEmpty) {
-        _showSnack('Tanggal belum diisi');
-        return;
-      }
-
       final tanggalPinjam = _parseTanggal(tanggalPinjamController.text);
       final tanggalKembali = _parseTanggal(tanggalController.text);
 
@@ -255,6 +283,7 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
             'p_id_alat': alat['id_alat'],
             'p_tanggal_pinjam': tanggalPinjam.toIso8601String(),
             'p_tanggal_kembali': tanggalKembali.toIso8601String(),
+            'p_kelas': selectedKelas,
           },
         );
       }
@@ -264,13 +293,8 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
       _showSnack('Peminjaman berhasil diajukan');
       Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
-      debugPrint('ERROR PEMINJAMAN: $e');
-
-      if (e.toString().contains('Stok alat habis')) {
-        _showSnack('Stok alat sudah habis');
-      } else {
-        _showSnack('Gagal mengajukan peminjaman');
-      }
+      debugPrint('SUPABASE ERROR: $e');
+      _showSnack(e.toString());
     }
   }
 
@@ -278,19 +302,25 @@ class _KeranjangPeminjamanScreenState extends State<AdminKeranjang> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  InputDecoration _dropdownDecoration() {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
   Widget _buildTanggalField(TextEditingController controller) {
     return TextField(
       controller: controller,
       readOnly: true,
-      decoration: InputDecoration(
+      decoration: _dropdownDecoration().copyWith(
         hintText: "dd/MM/yyyy",
         suffixIcon: const Icon(Icons.calendar_today, size: 18),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
       ),
       onTap: () async {
         DateTime? picked = await showDatePicker(

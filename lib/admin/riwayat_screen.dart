@@ -15,15 +15,15 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   final supabase = Supabase.instance.client;
+  late RealtimeChannel realtimeChannel;
 
-  int selectedFilter = 0; // 0 = Semua, 1 = Peminjaman, 2 = Pengembalian
+  int selectedFilter = 0;
   bool isLoading = true;
 
   List<Map<String, dynamic>> riwayatData = [];
 
   final List<String> kondisiOptions = ['baik', 'pemeliharaan', 'rusak'];
 
-  // ================== SEARCH ==================
   final TextEditingController searchController = TextEditingController();
   String searchQuery = "";
 
@@ -31,6 +31,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   void initState() {
     super.initState();
     fetchRiwayat();
+    initRealtime();
 
     searchController.addListener(() {
       setState(() {
@@ -41,42 +42,82 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
   @override
   void dispose() {
+    supabase.removeChannel(realtimeChannel); 
     searchController.dispose();
     super.dispose();
   }
 
-  // ================== FETCH DATA ==================
+  void initRealtime() {
+    realtimeChannel = supabase.channel('riwayat-realtime')
+      // LISTEN TABEL PEMINJAMAN
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'peminjaman',
+        callback: (_) {
+          fetchRiwayat();
+        },
+      )
+      // LISTEN TABEL PENGEMBALIAN
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'pengembalian',
+        callback: (_) {
+          fetchRiwayat();
+        },
+      )
+      ..subscribe();
+  }
+
+  // ================== FETCH DATA (FIX TOTAL, UI TETAP) ==================
   Future<void> fetchRiwayat() async {
     setState(() => isLoading = true);
 
     try {
-      // Ambil Peminjaman beserta user
+      /// 1️⃣ Ambil semua ID peminjaman yang SUDAH dikembalikan
+      final pengembalianIds = await supabase
+          .from('pengembalian')
+          .select('id_peminjaman');
+
+      final List<int> returnedIds = pengembalianIds
+          .map<int>((e) => e['id_peminjaman'] as int)
+          .toList();
+
+      /// 2️⃣ Ambil peminjaman yang BELUM dikembalikan
       final peminjaman = await supabase
           .from('peminjaman')
           .select('''
-            id_peminjaman, status_peminjaman, tanggal_pinjam, tanggal_kembali, 
+            id_peminjaman,
+            status_peminjaman,
+            tanggal_pinjam,
+            tanggal_kembali,
             users!peminjaman_id_user_fkey(username)
-            ''')
+          ''')
+          .not('id_peminjaman', 'in', returnedIds)
           .order('created_at', ascending: false);
 
-      // Ambil Pengembalian beserta peminjaman dan user
+      /// 3️⃣ Ambil data pengembalian
       final pengembalian = await supabase
           .from('pengembalian')
           .select('''
-            id_pengembalian, tanggal_kembali, kondisi_alat, peminjaman!pengembalian_id_peminjaman_fkey(
+            id_pengembalian,
+            tanggal_kembali,
+            kondisi_alat,
+            peminjaman!pengembalian_id_peminjaman_fkey(
               users!peminjaman_id_user_fkey(username)
             )
-            ''')
+          ''')
           .order('created_at', ascending: false);
 
       List<Map<String, dynamic>> combined = [];
 
-      // Map Peminjaman
+      /// ================== MAP PEMINJAMAN ==================
       for (var item in peminjaman) {
         combined.add({
           'id': item['id_peminjaman'],
           'nama': item['users']?['username'] ?? 'Unknown',
-          'status': item['status_peminjaman'] ?? 'menunggu',
+          'status': item['status_peminjaman'],
           'tanggal_pinjam': item['tanggal_pinjam'],
           'tanggal_kembali': item['tanggal_kembali'],
           'kondisi': '-',
@@ -84,7 +125,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         });
       }
 
-      // Map Pengembalian
+      /// ================== MAP PENGEMBALIAN ==================
       for (var item in pengembalian) {
         combined.add({
           'id': item['id_pengembalian'],
@@ -103,10 +144,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      print("Error fetchRiwayat: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal mengambil data riwayat: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal mengambil data riwayat")));
     }
   }
 
@@ -534,118 +574,117 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   Widget _riwayatCard(Map<String, dynamic> item) {
-  return GestureDetector(
-    onTap: () {
-      // Jika peminjaman sudah disetujui → masuk ke halaman pengembalian
-      if (item['type'] == 'Peminjaman' &&
-          item['status'].toString().toLowerCase() == 'disetujui') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AdminPengembalianScreen(
-              peminjaman: {
-                'id': item['id'],
-                'nama': item['nama'],
-                'email': item['email'] ?? '-', 
-                'kelas': item['kelas'] ?? '-',
-                'tanggal_pinjam': item['tanggal_pinjam'],
-                'tanggal_kembali': item['tanggal_kembali'],
-              },
+    return GestureDetector(
+      onTap: () {
+        if (item['type'] == 'Peminjaman' &&
+            item['status'].toString().toLowerCase() == 'disetujui') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AdminPengembalianScreen(
+                peminjaman: {
+                  'id': item['id'],
+                  'nama': item['nama'],
+                  'email': item['email'] ?? '-',
+                  'kelas': item['kelas'] ?? '-',
+                  'tanggal_pinjam': item['tanggal_pinjam'],
+                  'tanggal_kembali': item['tanggal_kembali'],
+                },
+              ),
             ),
-          ),
-        );
-      }
-    },
-    child: Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['nama'],
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['nama'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      /// TYPE (HIJAU) → Peminjaman / Pengembalian
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F8F2F),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          item['type'], // Peminjaman / Pengembalian
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      /// STATUS / KONDISI (OREN)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade600,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          item['type'] == 'Peminjaman'
+                              ? item['status'] // status peminjaman
+                              : item['kondisi'], // kondisi pengembalian
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 18),
+                  onPressed: () => showDeleteDialog(item),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    /// TYPE (HIJAU) → Peminjaman / Pengembalian
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4F8F2F),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        item['type'], // Peminjaman / Pengembalian
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    /// STATUS / KONDISI (OREN)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade600,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        item['type'] == 'Peminjaman'
-                            ? item['status'] // status peminjaman
-                            : item['kondisi'], // kondisi pengembalian
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 18),
+                  onPressed: () => editRiwayat(item),
                 ),
               ],
             ),
-          ),
-          Column(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.delete, size: 18),
-                onPressed: () => showDeleteDialog(item),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit, size: 18),
-                onPressed: () => editRiwayat(item),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
-}
-
