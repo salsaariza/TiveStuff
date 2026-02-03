@@ -114,8 +114,6 @@ class _AlatScreenState extends State<AlatScreen> {
 
           setState(() {
             kategoriList = data;
-
-            /// kalau kategori yang dipilih sudah dihapus
             if (selectedKategori != null &&
                 !kategoriList.any((k) => k.id == selectedKategori!.id)) {
               selectedKategori = null;
@@ -154,7 +152,7 @@ class _AlatScreenState extends State<AlatScreen> {
     });
   }
 
-  /// ================= DELETE ALAT REALTIME =================
+  /// ================= DELETE ALAT =================
   Future<void> deleteAlat(int id) async {
     try {
       await supabase.from('alat').delete().eq('id_alat', id);
@@ -201,7 +199,7 @@ class _AlatScreenState extends State<AlatScreen> {
     );
   }
 
-  /// ================= UI (TIDAK DIUBAH) =================
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(

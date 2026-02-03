@@ -194,7 +194,7 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
   }
 }
 
-// ================= CARD (TIDAK DIUBAH) =================
+// ================= CARD  =================
 class PengajuanCard extends StatefulWidget {
   final int id;
   final String kode;
@@ -321,7 +321,7 @@ class _PengajuanCardState extends State<PengajuanCard> {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE4F4D8),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(15),
                   border: Border.all(color: Colors.green),
                 ),
                 child: Row(
