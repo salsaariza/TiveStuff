@@ -64,14 +64,12 @@ class _PengembalianContentState extends State<_PengembalianContent> {
     fetchPengembalian();
   }
 
-  // ================= FORMAT TANGGAL =================
   String formatTanggal(dynamic t) {
     if (t == null) return '-';
     final s = t.toString();
     return s.length >= 10 ? s.substring(0, 10) : s;
   }
 
-  // ================= FETCH DATA =================
   Future<void> fetchPengembalian() async {
     try {
       setState(() => isLoading = true);
@@ -84,6 +82,7 @@ class _PengembalianContentState extends State<_PengembalianContent> {
         hari_terlambat,
         peminjaman (
           id_peminjaman,
+          status_peminjaman,
           tanggal_pinjam,
           tingkatan_kelas,
           users!peminjaman_id_user_fkey ( username ),
@@ -101,21 +100,14 @@ class _PengembalianContentState extends State<_PengembalianContent> {
         temp.add({
           'id_pengembalian': e['id_pengembalian'],
           'id_peminjaman': p['id_peminjaman'],
-
-          'kode':
-              'PJ ${p['id_peminjaman'].toString().padLeft(4, '0')}',
-
-        
-          'nama': p['users']?['username'] ?? '-',
-          'kelas': p['tingkatan_kelas'] ?? '-',
-          'alat': p['alat']?['nama_alat'] ?? '-',
-
-          
+          'kode': 'PJ ${p['id_peminjaman'].toString().padLeft(4, '0')}',
+          'nama': p['users']?['username']?.toString() ?? '-',
+          'kelas': p['tingkatan_kelas']?.toString() ?? '-',
+          'alat': p['alat']?['nama_alat']?.toString() ?? '-',
           'tanggal_pinjam': p['tanggal_pinjam'],
           'tanggal_kembali': e['tanggal_kembali'],
-
-         
           'terlambat': e['hari_terlambat'] ?? 0,
+          'status': p['status_peminjaman']?.toString() ?? '',
         });
       }
 
@@ -124,108 +116,60 @@ class _PengembalianContentState extends State<_PengembalianContent> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint("ERROR FETCH: $e");
+      debugPrint(e.toString());
       setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ================= FILTER SEARCH FIX =================
     final filtered = dataPengembalian.where((e) {
-      final kode = (e['kode'] ?? '').toString().toLowerCase();
-      final nama = (e['nama'] ?? '').toString().toLowerCase();
-
+      final kode = e['kode'].toString().toLowerCase();
+      final nama = e['nama'].toString().toLowerCase();
       return kode.contains(search.toLowerCase()) ||
           nama.contains(search.toLowerCase());
     }).toList();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 20),
-          Text(
-            "Pengembalian",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
+    return isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: filtered.length,
+            itemBuilder: (context, i) {
+              final d = filtered[i];
+              final sudah = d['status'] == 'selesai';
 
-          // SEARCH
-          TextField(
-            onChanged: (v) => setState(() => search = v),
-            decoration: InputDecoration(
-              hintText: "Cari",
-              suffixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // LIST
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, i) {
-                      final d = filtered[i];
-                      final terlambat = d['terlambat'] > 0;
-
-                      return _BaseCardPengembalian(
-                        id: d['kode'],
-                        nama: d['nama'],
-                        kelas: d['kelas'],
-
-                        tanggalPinjam: formatTanggal(d['tanggal_pinjam']),
-                        alat: d['alat'],
-                        tanggalKembali:
-                            formatTanggal(d['tanggal_kembali']),
-
-                        button: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: terlambat
-                                ? Colors.red
-                                : const Color(0xFF5B8F2E),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+              return _BaseCardPengembalian(
+                id: d['kode'],
+                nama: d['nama'],
+                kelas: d['kelas'],
+                tanggalPinjam: formatTanggal(d['tanggal_pinjam']),
+                alat: d['alat'],
+                tanggalKembali: formatTanggal(d['tanggal_kembali']),
+                button: ElevatedButton(
+                  onPressed: sudah
+                      ? null
+                      : () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetailPengembalianScreen(data: d),
                             ),
-                          ),
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    DetailPengembalianScreen(data: d),
-                              ),
-                            );
-
-                            if (result == true) {
-                              fetchPengembalian();
-                            }
-                          },
-                          child: Text(
-                            terlambat
-                                ? 'Konfirmasi Pengembalian Terlambat'
-                                : 'Konfirmasi Pengembalian',
-                            style: GoogleFonts.poppins(color: Colors.white),
-                          ),
-                        ),
-                      );
-                    },
+                          );
+                          if (result == true) fetchPengembalian();
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: sudah
+                        ? Colors.grey
+                        : const Color(0xFF5B8F2E),
                   ),
-          ),
-        ],
-      ),
-    );
+                  child: Text(
+                    sudah ? 'Sudah Dikonfirmasi' : 'Konfirmasi Pengembalian',
+                  ),
+                ),
+              );
+            },
+          );
   }
 }
 

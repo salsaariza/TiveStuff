@@ -42,12 +42,14 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
       filteredUsers = users;
     } else {
       filteredUsers = users.where((user) {
-        return user['username'].toString().toLowerCase().contains(
-              keyword.toLowerCase(),
-            ) ||
-            user['email'].toString().toLowerCase().contains(
-              keyword.toLowerCase(),
-            );
+        return user['username']
+                .toString()
+                .toLowerCase()
+                .contains(keyword.toLowerCase()) ||
+            user['email']
+                .toString()
+                .toLowerCase()
+                .contains(keyword.toLowerCase());
       }).toList();
     }
     setState(() {});
@@ -56,7 +58,65 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   // ================== DELETE ==================
   Future<void> deleteUser(String id) async {
     await supabase.from('users').delete().eq('id_user', id);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Pengguna berhasil dihapus",
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: Colors.red.shade400,
+        ),
+      );
+    }
+
     fetchUsers();
+  }
+
+  // ================== KONFIRMASI DELETE ==================
+  Future<void> confirmDeleteUser(Map user) async {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          "Hapus Pengguna",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          "Yakin ingin menghapus pengguna ini?\n\n${user['username']}",
+          style: GoogleFonts.poppins(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Batal",
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await deleteUser(user['id_user']);
+            },
+            child: Text(
+              "Hapus",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ================== DIALOG FORM ==================
@@ -89,7 +149,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
               ),
               const SizedBox(height: 20),
 
-              // NAMA
               TextFormField(
                 controller: nameController,
                 decoration: InputDecoration(
@@ -109,7 +168,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
               const SizedBox(height: 14),
 
-              // EMAIL
               TextFormField(
                 controller: emailController,
                 readOnly: title == "Edit Pengguna",
@@ -128,7 +186,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
               const SizedBox(height: 14),
 
-              // ROLE (STYLE IDENTIK TEXTFIELD)
               DropdownButtonFormField<String>(
                 value: selectedRole,
                 items: roleEnum
@@ -289,7 +346,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
         currentIndex: 2,
         onTap: (index) {
           if (index == 2) return;
-
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/dashboard');
           } else if (index == 1) {
@@ -301,7 +357,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
           }
         },
       ),
-
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,17 +390,13 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: Colors.grey.shade400,
-                      width: 1.5,
-                    ),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade400, width: 1.5),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: const BorderSide(
-                      color: Color(0xFF6C6D7A),
-                      width: 2,
-                    ),
+                        color: Color(0xFF6C6D7A), width: 2),
                   ),
                 ),
               ),
@@ -355,26 +406,26 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredUsers.isEmpty
-                  ? Center(
-                      child: Text(
-                        "Data Riwayat Kosong",
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
+                      ? Center(
+                          child: Text(
+                            "Data Riwayat Kosong",
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: filteredUsers.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _userCard(filteredUsers[index]),
+                            );
+                          },
                         ),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: filteredUsers.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: _userCard(filteredUsers[index]),
-                        );
-                      },
-                    ),
             ),
           ],
         ),
@@ -384,7 +435,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
   Widget _userCard(Map user) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -422,11 +472,11 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete, size: 20),
-            onPressed: () => deleteUser(user['id_user']),
+            icon: const Icon(Icons.delete, size: 20, color: Colors.black),
+            onPressed: () => confirmDeleteUser(user),
           ),
           IconButton(
-            icon: const Icon(Icons.edit, size: 20),
+            icon: const Icon(Icons.edit, size: 20, color: Colors.black),
             onPressed: () => editUser(user),
           ),
         ],

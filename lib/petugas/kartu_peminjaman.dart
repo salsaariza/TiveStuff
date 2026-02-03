@@ -37,7 +37,7 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
           users!peminjaman_id_user_fkey(
             username
           ),
-          detail_peminjaman(
+          detail_peminjaman!detail_peminjaman_id_peminjaman_fkey(
             jumlah,
             alat(nama_alat)
           )
@@ -47,6 +47,8 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
         .maybeSingle();
 
     if (!mounted) return;
+
+    debugPrint('DETAIL: ${data?['detail_peminjaman']}');
 
     setState(() {
       peminjaman = data;
@@ -58,6 +60,7 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
     setState(() => isLoading = false);
   }
 }
+
 
 
   // ================= REALTIME =================

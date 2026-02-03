@@ -6,10 +6,7 @@ import 'package:tivestuff1/widgets/back_petugas.dart';
 class DetailPengembalianScreen extends StatefulWidget {
   final Map<String, dynamic> data;
 
-  const DetailPengembalianScreen({
-    super.key,
-    required this.data,
-  });
+  const DetailPengembalianScreen({super.key, required this.data});
 
   @override
   State<DetailPengembalianScreen> createState() =>
@@ -22,23 +19,35 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
   String kondisi = 'baik';
   bool isLoading = false;
 
+  // ================= SIMPAN & SELESAIKAN =================
   Future<void> simpanPengembalian() async {
     try {
       setState(() => isLoading = true);
 
+      // Update pengembalian
       await supabase
           .from('pengembalian')
           .update({
             'kondisi_alat': kondisi,
+            'update_at': DateTime.now().toIso8601String(),
           })
           .eq('id_pengembalian', widget.data['id_pengembalian']);
+
+      // Update status peminjaman
+      await supabase
+          .from('peminjaman')
+          .update({
+            'status_peminjaman': 'selesai',
+            'update_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id_peminjaman', widget.data['id_peminjaman']);
 
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
     } finally {
       setState(() => isLoading = false);
     }
@@ -51,7 +60,6 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
       body: SafeArea(
         child: Column(
           children: [
-    
             const HeaderPetugas(),
 
             // ================= CONTENT =================
@@ -61,7 +69,6 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ===== TITLE =====
                     Text(
                       'Detail Pengembalian',
                       style: GoogleFonts.poppins(
@@ -71,7 +78,6 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // ===== CARD INFO =====
                     _card(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,25 +110,17 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
 
                     const SizedBox(height: 20),
 
-                    // ===== KONDISI =====
                     Text(
                       'Kondisi Alat',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
+
                     DropdownButtonFormField<String>(
                       value: kondisi,
                       items: const [
-                        DropdownMenuItem(
-                          value: 'baik',
-                          child: Text('Baik'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'rusak',
-                          child: Text('Rusak'),
-                        ),
+                        DropdownMenuItem(value: 'baik', child: Text('Baik')),
+                        DropdownMenuItem(value: 'rusak', child: Text('Rusak')),
                       ],
                       onChanged: (v) => setState(() => kondisi = v!),
                       decoration: InputDecoration(
@@ -136,7 +134,6 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
 
                     const SizedBox(height: 30),
 
-                    // ===== BUTTON =====
                     SizedBox(
                       width: double.infinity,
                       height: 48,
@@ -178,9 +175,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
       child: child,
     );
@@ -189,10 +184,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
   Widget _rowInfo(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        '$label : $value',
-        style: GoogleFonts.poppins(fontSize: 12),
-      ),
+      child: Text('$label : $value', style: GoogleFonts.poppins(fontSize: 12)),
     );
   }
 }

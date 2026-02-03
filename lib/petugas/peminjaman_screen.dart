@@ -29,68 +29,67 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
     supabase.from('peminjaman').stream(primaryKey: ['id_peminjaman']).listen((
       data,
     ) {
-      fetchPeminjaman(); 
+      fetchPeminjaman();
     });
   }
 
   Future<void> fetchPeminjaman() async {
-  setState(() => isLoading = true);
+    setState(() => isLoading = true);
 
-  try {
-    final data = await supabase
-        .from('peminjaman')
-        .select()
-        .order('created_at', ascending: false);
+    try {
+      final data = await supabase
+          .from('peminjaman')
+          .select()
+          .order('created_at', ascending: false);
 
-    List<Map<String, dynamic>> temp = [];
+      List<Map<String, dynamic>> temp = [];
 
-    for (var e in data) {
-      String namaUser = '-';
-      String namaAlat = '-';
+      for (var e in data) {
+        String namaUser = '-';
+        String namaAlat = '-';
 
-      if (e['id_user'] != null) {
-        final user = await supabase
-            .from('users')
-            .select('username')
-            .eq('id_user', e['id_user'])
-            .maybeSingle();
+        if (e['id_user'] != null) {
+          final user = await supabase
+              .from('users')
+              .select('username')
+              .eq('id_user', e['id_user'])
+              .maybeSingle();
 
-        namaUser = user?['username'] ?? '-';
+          namaUser = user?['username'] ?? '-';
+        }
+
+        if (e['id_alat'] != null) {
+          final alat = await supabase
+              .from('alat')
+              .select('nama_alat')
+              .eq('id_alat', e['id_alat'])
+              .maybeSingle();
+
+          namaAlat = alat?['nama_alat'] ?? '-';
+        }
+
+        temp.add({
+          'id': e['id_peminjaman'],
+          'kode': 'PJ ${e['id_peminjaman'].toString().padLeft(4, '0')}',
+          'nama': namaUser,
+          'kelas': e['tingkatan_kelas'] ?? '-',
+          'tanggal': e['tanggal_pinjam'] != null
+              ? DateTime.parse(e['tanggal_pinjam']).toLocal()
+              : null,
+          'alat': namaAlat,
+          'status': e['status_peminjaman'],
+        });
       }
 
-      if (e['id_alat'] != null) {
-        final alat = await supabase
-            .from('alat')
-            .select('nama_alat')
-            .eq('id_alat', e['id_alat'])
-            .maybeSingle();
-
-        namaAlat = alat?['nama_alat'] ?? '-';
-      }
-
-      temp.add({
-        'id': e['id_peminjaman'],
-        'kode': 'PJ ${e['id_peminjaman'].toString().padLeft(4, '0')}',
-        'nama': namaUser,
-        'kelas': e['tingkatan_kelas'] ?? '-',
-        'tanggal': e['tanggal_pinjam'] != null
-            ? DateTime.parse(e['tanggal_pinjam']).toLocal()
-            : null,
-        'alat': namaAlat,
-        'status': e['status_peminjaman'],
+      setState(() {
+        peminjaman = temp;
+        isLoading = false;
       });
+    } catch (e) {
+      debugPrint('ERROR FETCH: $e');
+      setState(() => isLoading = false);
     }
-
-    setState(() {
-      peminjaman = temp;
-      isLoading = false;
-    });
-  } catch (e) {
-    debugPrint('ERROR FETCH: $e');
-    setState(() => isLoading = false);
   }
-}
-
 
   // ================= FILTER =================
   List<Map<String, dynamic>> get filteredPeminjaman {
@@ -231,10 +230,29 @@ class _PengajuanCardState extends State<PengajuanCard> {
   }
 
   Future<void> updateStatus(String newStatus) async {
-    await supabase
-        .from('peminjaman')
-        .update({'status_peminjaman': newStatus})
-        .eq('id_peminjaman', widget.id);
+    try {
+      if (newStatus == 'disetujui') {
+        await supabase.rpc(
+          'approve_peminjaman',
+          params: {'p_id_peminjaman': widget.id},
+        );
+      } else {
+        await supabase
+            .from('peminjaman')
+            .update({'status_peminjaman': newStatus})
+            .eq('id_peminjaman', widget.id);
+      }
+
+      setState(() {
+        status = newStatus;
+      });
+    } catch (e) {
+      debugPrint('ERROR SETUJU PEMINJAMAN: $e');
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 
   void _openKartuPeminjaman() {

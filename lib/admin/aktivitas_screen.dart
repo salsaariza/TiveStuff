@@ -30,23 +30,32 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
     try {
       final List<dynamic> data = await supabase
           .from('log_aktivitas')
-          .select('id_log, aktivitas, id_user, created_at')
+          .select('''
+            id_log,
+            aktivitas,
+            created_at,
+            users (
+              username
+            )
+          ''')
           .order('created_at', ascending: false);
 
       setState(() {
-        aktivitas = data
-            .map((e) => {
-                  'id': e['id_log'],
-                  'aktivitas': e['aktivitas'] ?? '',
-                  'petugas': e['id_user'] ?? 'Unknown',
-                  'created_at': e['created_at'] != null
-                      ? DateTime.parse(e['created_at']).toLocal()
-                      : null,
-                })
-            .toList();
+        aktivitas = data.map((e) {
+          return {
+            'id': e['id_log'],
+            'aktivitas': e['aktivitas'] ?? '',
+            'petugas': e['users'] != null
+                ? e['users']['username']
+                : 'Unknown',
+            'created_at': e['created_at'] != null
+                ? DateTime.parse(e['created_at']).toLocal()
+                : null,
+          };
+        }).toList();
       });
     } catch (e) {
-      print('Error fetching aktivitas: $e');
+      debugPrint('Error fetching aktivitas: $e');
     } finally {
       setState(() => isLoading = false);
     }
@@ -55,11 +64,15 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
   // ================= SEARCH FILTER =================
   List<Map<String, dynamic>> get filteredAktivitas {
     if (searchQuery.isEmpty) return aktivitas;
-    return aktivitas
-        .where((a) =>
-            a['aktivitas'].toLowerCase().contains(searchQuery.toLowerCase()) ||
-            a['petugas'].toString().toLowerCase().contains(searchQuery.toLowerCase()))
-        .toList();
+    return aktivitas.where((a) {
+      return a['aktivitas']
+              .toLowerCase()
+              .contains(searchQuery.toLowerCase()) ||
+          a['petugas']
+              .toString()
+              .toLowerCase()
+              .contains(searchQuery.toLowerCase());
+    }).toList();
   }
 
   @override
@@ -190,29 +203,23 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-
           const SizedBox(height: 6),
-
           Text(
-            "Petugas : ${data['petugas']}",
+            "${data['petugas']}",
             style: GoogleFonts.poppins(
               fontSize: 15,
               color: Colors.black54,
             ),
           ),
-
           Text(
             data['created_at'] != null
-                ? "Waktu : ${data['created_at'].day}-${data['created_at'].month}-${data['created_at'].year} ${data['created_at'].hour}:${data['created_at'].minute}"
+                ? "Waktu : ${data['created_at'].day}-${data['created_at'].month}-${data['created_at'].year} ${data['created_at'].hour}:${data['created_at'].minute.toString().padLeft(2, '0')}"
                 : "",
             style: GoogleFonts.poppins(
               fontSize: 15,
               color: Colors.black54,
             ),
           ),
-
-          const SizedBox(height: 12),
-
         ],
       ),
     );
