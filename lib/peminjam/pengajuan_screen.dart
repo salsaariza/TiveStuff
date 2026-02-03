@@ -39,7 +39,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           id_peminjaman,
           tanggal_pinjam,
           status_peminjaman,
-
+          id_alat,
           users!peminjaman_id_user_fkey (
             username,
             email
@@ -161,6 +161,8 @@ class PengajuanCard extends StatelessWidget {
         ? '-'
         : detail.map((e) => e['alat']?['nama_alat'] ?? '-').join(', ');
 
+    final bool canReturn = data['status_peminjaman'] == 'disetujui';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -218,7 +220,7 @@ class PengajuanCard extends StatelessWidget {
 
           const SizedBox(height: 4),
 
-          /// Kelas (pakai email)
+          /// Email
           Text(
             data['users']?['email'] ?? '-',
             style: const TextStyle(
@@ -244,37 +246,71 @@ class PengajuanCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          /// Status
+          /// Status & Pengembalian
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Status :',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF7B7B7B),
-                ),
+              Row(
+                children: [
+                  const Text(
+                    'Status :',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7B7B7B),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    height: 26,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _statusColor(data['status_peminjaman']),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Text(
+                      data['status_peminjaman'] ?? '-',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Container(
-                height: 26,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _statusColor(data['status_peminjaman']),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Text(
-                  data['status_peminjaman'] ?? '-',
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
+
+  
+              if (canReturn)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/pengembalianpeminjam',
+                      arguments: data['id_peminjaman'],
+                    );
+                  },
+                  child: const Text(
+                    'Kembalikan',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -295,3 +331,4 @@ class PengajuanCard extends StatelessWidget {
     }
   }
 }
+

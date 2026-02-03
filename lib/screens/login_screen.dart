@@ -80,9 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -101,14 +99,17 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Image.asset('assets/images/logotivestuff.png', width: 200),
                 const SizedBox(height: 10),
-          
+
                 Text(
-                  'TiveStuff',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                    'TiveStuff',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      color:const Color(0xFF5E5757),
+                      fontWeight: FontWeight.w600
+                    )
                   ),
-                ),
+  
+
                 const SizedBox(height: 6),
                 Text(
                   'Pengelola Peminjaman Inventaris\nBarang Jurusan Otomotif',
@@ -189,11 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: TextFormField(

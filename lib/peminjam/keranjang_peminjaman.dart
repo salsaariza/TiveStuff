@@ -169,10 +169,7 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
           const SizedBox(height: 18),
 
           /// TANGGAL PEMINJAMAN
-          Text(
-            "Tanggal Peminjaman",
-            style: GoogleFonts.poppins(fontSize: 12),
-          ),
+          Text("Tanggal Peminjaman", style: GoogleFonts.poppins(fontSize: 12)),
           const SizedBox(height: 6),
           _buildTanggalField(tanggalPinjamController),
 
@@ -250,11 +247,17 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
       final tanggalPinjam = _parseTanggal(tanggalPinjamController.text);
       final tanggalKembali = _parseTanggal(tanggalController.text);
 
+      // Ambil ID alat pertama untuk di tabel peminjaman
+      final int? firstAlatId = keranjang.isNotEmpty
+          ? keranjang.first['id_alat']
+          : null;
+
       /// INSERT PEMINJAMAN
       final peminjaman = await supabase
           .from('peminjaman')
           .insert({
             'id_user': user.id,
+            'id_alat': firstAlatId, // <-- ini yang masuk ke tabel peminjaman
             'tingkatan_kelas': selectedKelas,
             'tanggal_pinjam': tanggalPinjam.toIso8601String(),
             'tanggal_kembali': tanggalKembali.toIso8601String(),
@@ -285,8 +288,9 @@ class _KeranjangPeminjamanScreenState extends State<KeranjangPeminjamanScreen> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildTanggalField(TextEditingController controller) {

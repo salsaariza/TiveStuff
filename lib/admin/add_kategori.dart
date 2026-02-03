@@ -15,7 +15,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
   final TextEditingController _kategoriController = TextEditingController();
 
-  // ✅ FORM KEY UNTUK VALIDASI
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool isLoading = true;
@@ -57,9 +56,7 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
   /// ================= ADD =================
   Future<void> addKategori(String nama) async {
-    await supabase.from('kategori').insert({
-      'nama_kategori': nama,
-    });
+    await supabase.from('kategori').insert({'nama_kategori': nama});
 
     await fetchKategori();
     Navigator.pop(context);
@@ -80,20 +77,23 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
   /// ================= DELETE =================
   Future<void> deleteKategori(int id) async {
-  try {
-    await supabase
-        .from('kategori')
-        .update({'delete_at': DateTime.now().toIso8601String()})
-        .eq('id_kategori', id);
+    try {
+      await supabase.from('kategori').delete().eq('id_kategori', id);
+      setState(() {
+        kategoriList.removeWhere((item) => item['id_kategori'] == id);
+      });
 
-    // UI otomatis update karena listener kategori
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text("Kategori berhasil dihapus")));
-  } catch (e) {
-    debugPrint("ERROR DELETE KATEGORI: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Kategori berhasil dihapus permanen")),
+      );
+    } catch (e) {
+      debugPrint("ERROR DELETE KATEGORI: $e");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Gagal menghapus kategori")));
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -189,10 +189,8 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
           IconButton(
             icon: const Icon(Icons.edit, size: 18),
-            onPressed: () => _showKategoriDialog(
-              isEdit: true,
-              kategori: kategori,
-            ),
+            onPressed: () =>
+                _showKategoriDialog(isEdit: true, kategori: kategori),
           ),
 
           IconButton(
@@ -286,14 +284,10 @@ class _KategoriScreenState extends State<KategoriScreen> {
                           ),
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
-                              final nama =
-                                  _kategoriController.text.trim();
+                              final nama = _kategoriController.text.trim();
 
                               if (isEdit) {
-                                updateKategori(
-                                  kategori!['id_kategori'],
-                                  nama,
-                                );
+                                updateKategori(kategori!['id_kategori'], nama);
                               } else {
                                 addKategori(nama);
                               }

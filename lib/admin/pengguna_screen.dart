@@ -128,7 +128,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
               const SizedBox(height: 14),
 
-              // ROLE (STYLE IDENTIK TEXTFIELD)
+              // ROLE 
               DropdownButtonFormField<String>(
                 value: selectedRole,
                 items: roleEnum
@@ -383,54 +383,80 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   }
 
   Widget _userCard(Map user) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user['username'],
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+  return Container(
+    margin: const EdgeInsets.only(bottom: 0),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.08),
+          blurRadius: 6,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user['username'],
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  user['email'],
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user['email'],
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.delete, size: 20),
-            onPressed: () => deleteUser(user['id_user']),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: () => editUser(user),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete, size: 20),
+          onPressed: () async {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text("Hapus Pengguna",
+                style: TextStyle(fontSize: 15)),
+                content: Text(
+                    "Apakah Anda yakin ingin menghapus pengguna '${user['username']}'?"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text("Batal"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    
+                      child: Text("Hapus",
+                    style: TextStyle(color:Colors.red)),
+                  ),
+                ],
+              ),
+            );
+
+            if (confirm == true) {
+              deleteUser(user['id_user']);
+            }
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.edit, size: 20),
+          onPressed: () => editUser(user),
+        ),
+      ],
+    ),
+  );
+}
 }
