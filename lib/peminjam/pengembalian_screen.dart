@@ -28,35 +28,48 @@ class _PengembalianPeminjamScreenState
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return [];
 
-    final response = await supabase.from('peminjaman').select('''
+    final response = await supabase
+        .from('peminjaman')
+        .select('''
       id_peminjaman,
-      created_at,
+      tanggal_pinjam,
       status_peminjaman,
-      users!peminjaman_id_user_fkey(username, tingkatan_kelas),
+      tingkatan_kelas,
+      users!peminjaman_id_user_fkey(
+        username
+      ),
       detail_peminjaman(
         jumlah,
-        alat!detail_peminjaman_id_alat_fkey(nama_alat)
+        alat!detail_peminjaman_id_alat_fkey(
+          nama_alat
+        )
       ),
       pengembalian(id_pengembalian)
-    ''').eq('id_user', userId).order('created_at', ascending: false);
+    ''')
+        .eq('id_user', userId)
+        .order('created_at', ascending: false);
 
-    final List data = response as List;
+    final List list = response as List;
 
-    return data.map<Map<String, dynamic>>((item) {
+    return list.map<Map<String, dynamic>>((item) {
       final detail = item['detail_peminjaman'] ?? [];
-      final alat = detail
-          .map((d) => '${d['jumlah']} ${d['alat']['nama_alat']}')
-          .join(', ');
 
-      final sudahDikembalikan =
+      final alat = detail.isEmpty
+          ? '-'
+          : detail
+                .map((d) => '${d['jumlah']} ${d['alat']?['nama_alat'] ?? '-'}')
+                .join(', ');
+
+      final bool sudahDikembalikan =
           item['pengembalian'] != null &&
-              (item['pengembalian'] as List).isNotEmpty;
+          (item['pengembalian'] as List).isNotEmpty;
 
       return {
         'id_peminjaman': item['id_peminjaman'],
-        'kode': 'PG-${item['id_peminjaman'].toString().padLeft(4, '0')}',
-        'nama': item['users']['username'] ?? '-',
-        'kelas': item['users']['tingkatan_kelas'] ?? '-',
+        'kode': 'PJ ${item['id_peminjaman']}',
+        'nama': item['users']?['username'] ?? '-',
+        'kelas': item['tingkatan_kelas'] ?? '-',
+        'tanggal': item['tanggal_pinjam']?.toString().substring(0, 10) ?? '-',
         'alat': alat,
         'status': item['status_peminjaman'],
         'sudah_dikembalikan': sudahDikembalikan,
@@ -68,6 +81,8 @@ class _PengembalianPeminjamScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEEEEEE),
+
+      /// ================= NAV =================
       bottomNavigationBar: NavPeminjam(
         currentIndex: 3,
         onTap: (index) {
@@ -81,14 +96,18 @@ class _PengembalianPeminjamScreenState
           }
         },
       ),
+
+      /// ================= BODY =================
       body: SafeArea(
         child: Column(
           children: [
             const BackPeminjam(),
             Expanded(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -100,6 +119,7 @@ class _PengembalianPeminjamScreenState
                       ),
                     ),
                     const SizedBox(height: 12),
+
                     Expanded(
                       child: FutureBuilder<List<Map<String, dynamic>>>(
                         future: _futurePeminjaman,
@@ -107,28 +127,36 @@ class _PengembalianPeminjamScreenState
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
                             return const Center(
-                                child: CircularProgressIndicator());
+                              child: CircularProgressIndicator(),
+                            );
                           }
 
                           if (snapshot.hasError) {
+                            debugPrint('ERROR FUTURE: ${snapshot.error}');
                             return Center(
-                                child: Text(
-                                    'Terjadi kesalahan: ${snapshot.error}'));
+                              child: Text(
+                                snapshot.error.toString(),
+                                style: GoogleFonts.poppins(fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            );
                           }
 
                           final data = snapshot.data ?? [];
                           if (data.isEmpty) {
-                            return const Center(
-                                child: Text('Tidak ada peminjaman.'));
+                            return Center(
+                              child: Text(
+                                'Tidak ada data peminjaman',
+                                style: GoogleFonts.poppins(),
+                              ),
+                            );
                           }
 
                           return ListView.builder(
                             physics: const BouncingScrollPhysics(),
                             itemCount: data.length,
                             itemBuilder: (context, index) {
-                              return PengembalianCard(
-                                data: data[index],
-                              );
+                              return PengembalianCard(data: data[index]);
                             },
                           );
                         },
@@ -154,7 +182,7 @@ class PengembalianCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool bisaAjukan =
-        !data['sudah_dikembalikan'] && data['status'] == 'disetujui';
+        data['status'] == 'disetujui' && data['sudah_dikembalikan'] == false;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -173,6 +201,7 @@ class PengembalianCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -184,7 +213,7 @@ class PengembalianCard extends StatelessWidget {
                 ),
               ),
               Text(
-                DateTime.now().toString().substring(0, 10),
+                data['tanggal'],
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: const Color(0xFF9B9B9B),
@@ -192,7 +221,10 @@ class PengembalianCard extends StatelessWidget {
               ),
             ],
           ),
+
           const SizedBox(height: 8),
+
+          /// Nama
           Text(
             data['nama'],
             style: GoogleFonts.poppins(
@@ -200,39 +232,37 @@ class PengembalianCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+
           const SizedBox(height: 4),
-          Text(
-            data['kelas'],
-            style: GoogleFonts.poppins(fontSize: 12),
-          ),
+
+          /// Kelas
+          Text(data['kelas'], style: GoogleFonts.poppins(fontSize: 12)),
+
           const SizedBox(height: 6),
-          Text(
-            data['alat'],
-            style: GoogleFonts.poppins(fontSize: 12),
-          ),
+
+          /// Alat
+          Text(data['alat'], style: GoogleFonts.poppins(fontSize: 12)),
+
           const SizedBox(height: 12),
+
+          /// Status / Ajukan
           Row(
             children: [
-              Text(
-                'Status :',
-                style: GoogleFonts.poppins(fontSize: 12),
-              ),
+              Text('Status :', style: GoogleFonts.poppins(fontSize: 12)),
               const SizedBox(width: 8),
+
               bisaAjukan
                   ? GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(
                           context,
                           '/ajukanpengembalian',
-                          arguments: {
-                            'idPeminjaman': data['id_peminjaman']
-                          },
+                          arguments: {'idPeminjaman': data['id_peminjaman']},
                         );
                       },
                       child: Container(
                         height: 26,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: Colors.orange,
@@ -249,8 +279,7 @@ class PengembalianCard extends StatelessWidget {
                     )
                   : Container(
                       height: 26,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: data['sudah_dikembalikan']
@@ -260,7 +289,7 @@ class PengembalianCard extends StatelessWidget {
                       ),
                       child: Text(
                         data['sudah_dikembalikan']
-                            ? 'Sudah dikembalikan'
+                            ? 'Sudah Dikembalikan'
                             : data['status'],
                         style: GoogleFonts.poppins(
                           fontSize: 11,

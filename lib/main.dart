@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tivestuff1/admin/admin_keranjang.dart';
+import 'package:tivestuff1/peminjam/ajukan_pengembalian.dart';
 import 'package:tivestuff1/petugas/kartu_peminjaman.dart';
 
 // Screens umum
@@ -76,6 +77,7 @@ class MyApp extends StatelessWidget {
         '/peminjamanpeminjam': (context) => const AlatPeminjamScreen(),
         '/pengajuanpeminjam': (context) => const PengajuanScreen(),
         '/pengembalianpeminjam': (context) => const PengembalianPeminjamScreen(),
+        '/ajukanpengembalian' : (context) => const AjukanPengembalianScreen(),
       },
     );
   }

@@ -15,7 +15,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
   final supabase = Supabase.instance.client;
 
   List<Map<String, dynamic>> pengajuanList = [];
-  bool isLoading = true; // ✅ LOADING STATE
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -28,31 +28,25 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       final data = await supabase
           .from('peminjaman')
           .select('''
-          id_peminjaman,
-          tanggal_pinjam,
-          status_peminjaman,
-          id_alat,
-          users!peminjaman_id_user_fkey (
-            username,
-            email
-          ),
-
-          detail_peminjaman (
-            id_alat,
-
-            alat:alat!detail_peminjaman_id_alat_fkey (
-              nama_alat
+            id_peminjaman,
+            tanggal_pinjam,
+            status_peminjaman,
+            users!peminjaman_id_user_fkey (
+              username,
+              email
+            ),
+            detail_peminjaman (
+              alat:alat!detail_peminjaman_id_alat_fkey (
+                nama_alat
+              )
             )
-          )
-        ''')
+          ''')
           .eq('id_user', user.id)
           .order('created_at', ascending: false);
 
@@ -62,9 +56,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
       });
     } catch (e) {
       debugPrint("ERROR FETCH PENGAJUAN: $e");
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
@@ -83,7 +75,8 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           } else if (index == 1) {
             Navigator.pushReplacementNamed(context, '/alatpeminjam');
           } else if (index == 3) {
-            Navigator.pushReplacementNamed(context, '/pengembalianpeminjam');
+            Navigator.pushReplacementNamed(
+                context, '/pengembalianpeminjam');
           }
         },
       ),
@@ -93,13 +86,10 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         child: Column(
           children: [
             const BackPeminjam(),
-
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -112,29 +102,29 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    /// ================= CONTENT =================
                     Expanded(
                       child: isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : pengajuanList.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Belum ada pengajuan',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.grey,
+                              ? Center(
+                                  child: Text(
+                                    'Belum ada pengajuan',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  physics:
+                                      const BouncingScrollPhysics(),
+                                  itemCount: pengajuanList.length,
+                                  itemBuilder: (context, index) {
+                                    return PengajuanCard(
+                                      data: pengajuanList[index],
+                                    );
+                                  },
                                 ),
-                              ),
-                            )
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: pengajuanList.length,
-                              itemBuilder: (context, index) {
-                                return PengajuanCard(
-                                  data: pengajuanList[index],
-                                );
-                              },
-                            ),
                     ),
                   ],
                 ),
@@ -159,9 +149,9 @@ class PengajuanCard extends StatelessWidget {
 
     final String alat = detail.isEmpty
         ? '-'
-        : detail.map((e) => e['alat']?['nama_alat'] ?? '-').join(', ');
-
-    final bool canReturn = data['status_peminjaman'] == 'disetujui';
+        : detail
+            .map((e) => e['alat']?['nama_alat'] ?? '-')
+            .join(', ');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -194,7 +184,10 @@ class PengajuanCard extends StatelessWidget {
                 ),
               ),
               Text(
-                data['tanggal_pinjam']?.toString().substring(0, 10) ?? '-',
+                data['tanggal_pinjam']
+                        ?.toString()
+                        .substring(0, 10) ??
+                    '-',
                 style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 15,
@@ -246,71 +239,39 @@ class PengajuanCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          /// Status & Pengembalian
+          /// Status SAJA (tanpa kembalikan)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text(
-                    'Status :',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF7B7B7B),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    height: 26,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _statusColor(data['status_peminjaman']),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Text(
-                      data['status_peminjaman'] ?? '-',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
+              const Text(
+                'Status :',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF7B7B7B),
+                ),
               ),
-
-  
-              if (canReturn)
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/pengembalianpeminjam',
-                      arguments: data['id_peminjaman'],
-                    );
-                  },
-                  child: const Text(
-                    'Kembalikan',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
+              const SizedBox(width: 8),
+              Container(
+                height: 26,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _statusColor(
+                      data['status_peminjaman']),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Text(
+                  data['status_peminjaman'] ?? '-',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
                   ),
                 ),
+              ),
             ],
           ),
         ],
@@ -331,4 +292,3 @@ class PengajuanCard extends StatelessWidget {
     }
   }
 }
-
