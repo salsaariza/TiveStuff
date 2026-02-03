@@ -119,7 +119,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     );
   }
 
-  // ================== DIALOG FORM ==================
+  // ================== FORM DIALOG ==================
   Widget penggunaFormDialog({
     required String title,
     required TextEditingController nameController,
@@ -154,10 +154,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 decoration: InputDecoration(
                   hintText: "Nama",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -174,10 +172,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 decoration: InputDecoration(
                   hintText: "Email",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -186,10 +182,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
 
               const SizedBox(height: 14),
 
-<<<<<<< HEAD
-=======
-              // ROLE 
->>>>>>> 05e053f4aaf73d898e44fa559539b346ab65ad7a
               DropdownButtonFormField<String>(
                 value: selectedRole,
                 items: roleEnum
@@ -209,10 +201,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 decoration: InputDecoration(
                   hintText: "Role",
                   hintStyle: GoogleFonts.poppins(fontSize: 13),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -243,7 +233,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6C6D7A),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -314,14 +305,11 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
         selectedRole: role,
         onRoleChanged: (v) => role = v,
         onConfirm: () async {
-          await supabase
-              .from('users')
-              .update({
-                'username': nameC.text.trim(),
-                'role': role,
-                'update_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id_user', user['id_user']);
+          await supabase.from('users').update({
+            'username': nameC.text.trim(),
+            'role': role,
+            'update_at': DateTime.now().toIso8601String(),
+          }).eq('id_user', user['id_user']);
 
           Navigator.pop(context);
           fetchUsers();
@@ -388,10 +376,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                   suffixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide:
@@ -421,11 +407,13 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
                           itemCount: filteredUsers.length,
                           itemBuilder: (context, index) {
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
+                              padding:
+                                  const EdgeInsets.only(bottom: 14),
                               child: _userCard(filteredUsers[index]),
                             );
                           },
@@ -437,6 +425,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
     );
   }
 
+  // ================== CARD ==================
   Widget _userCard(Map user) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -463,92 +452,28 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-  return Container(
-    margin: const EdgeInsets.only(bottom: 0),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.08),
-          blurRadius: 6,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user['username'],
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user['email'],
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
+                const SizedBox(height: 4),
+                Text(
+                  user['email'],
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete, size: 20, color: Colors.black),
-            onPressed: () => confirmDeleteUser(user),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20, color: Colors.black),
+            icon: const Icon(Icons.edit, size: 20),
             onPressed: () => editUser(user),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, size: 20),
+            onPressed: () => confirmDeleteUser(user),
           ),
         ],
       ),
     );
   }
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete, size: 20),
-          onPressed: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text("Hapus Pengguna",
-                style: TextStyle(fontSize: 15)),
-                content: Text(
-                    "Apakah Anda yakin ingin menghapus pengguna '${user['username']}'?"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text("Batal"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    
-                      child: Text("Hapus",
-                    style: TextStyle(color:Colors.red)),
-                  ),
-                ],
-              ),
-            );
-
-            if (confirm == true) {
-              deleteUser(user['id_user']);
-            }
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.edit, size: 20),
-          onPressed: () => editUser(user),
-        ),
-      ],
-    ),
-  );
-}
 }

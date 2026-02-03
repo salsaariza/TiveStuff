@@ -19,35 +19,17 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
 
   Map<String, dynamic>? peminjaman;
   bool isLoading = true;
-  String namaAlat = "-"; 
+  String namaAlat = "-";
 
   @override
   void initState() {
     super.initState();
     fetchPeminjaman();
+    _initRealtime();
   }
 
-  // ================= FETCH HEADER + NAMA ALAT =================
+  // ================= FETCH DATA =================
   Future<void> fetchPeminjaman() async {
-  try {
-    final data = await supabase
-        .from('peminjaman')
-        .select(
-          '''
-          id_peminjaman,
-          tanggal_pinjam,
-          tanggal_kembali,
-          users!peminjaman_id_user_fkey(
-            username
-          ),
-          detail_peminjaman!detail_peminjaman_id_peminjaman_fkey(
-            jumlah,
-            alat(nama_alat)
-          )
-          '''
-        )
-        .eq('id_peminjaman', widget.idPeminjaman)
-        .maybeSingle();
     try {
       final data = await supabase
           .from('peminjaman')
@@ -55,29 +37,35 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
             id_peminjaman,
             tanggal_pinjam,
             tanggal_kembali,
-            id_alat,
             users!peminjaman_id_user_fkey(username),
-            alat!peminjaman_id_alat_fkey(nama_alat)
+            detail_peminjaman(
+              jumlah,
+              alat(nama_alat)
+            )
           ''')
           .eq('id_peminjaman', widget.idPeminjaman)
           .maybeSingle();
 
       if (!mounted) return;
 
-    debugPrint('DETAIL: ${data?['detail_peminjaman']}');
+      final detail = data?['detail_peminjaman'] ?? [];
+      final alat = detail.isEmpty
+          ? "-"
+          : detail
+              .map((d) => '${d['jumlah']} ${d['alat']['nama_alat']}')
+              .join(', ');
 
-    setState(() {
-      peminjaman = data;
-      isLoading = false;
-    });
-  } catch (e) {
-    debugPrint('Error fetch peminjaman: $e');
-    if (!mounted) return;
-    setState(() => isLoading = false);
+      setState(() {
+        peminjaman = data;
+        namaAlat = alat;
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error fetch peminjaman: $e');
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
   }
-}
-
-
 
   // ================= REALTIME =================
   void _initRealtime() {
@@ -92,22 +80,9 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
             peminjaman = {
               ...?peminjaman,
               ...data.first,
-              // ⛔ jangan timpa relasi
-              'detail_peminjaman':
-                  peminjaman?['detail_peminjaman'] ?? [],
             };
           });
         });
-      setState(() {
-        peminjaman = data;
-        namaAlat = data?['alat']?['nama_alat'] ?? "-";
-        isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Error fetch peminjaman: $e');
-      if (!mounted) return;
-      setState(() => isLoading = false);
-    }
   }
 
   @override
@@ -138,7 +113,8 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Center(
                                         child: Text(
@@ -153,18 +129,31 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
                                       Center(
                                         child: Text(
                                           "JURUSAN OTOMOTIF\nSMKS BRANTAS KARANGKATES",
+                                          textAlign: TextAlign.center,
                                           style: GoogleFonts.poppins(
                                             fontSize: 12,
                                             color: Colors.grey[600],
                                           ),
-                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                       const SizedBox(height: 16),
-                                      _row("Kode Peminjaman", "PJ-${peminjaman!['id_peminjaman']}"),
-                                      _row("Peminjam", peminjaman!['users']?['username'] ?? "-"),
-                                      _row("Tanggal Peminjaman", peminjaman!['tanggal_pinjam'] ?? "-"),
-                                      _row("Tanggal Pengembalian", peminjaman!['tanggal_kembali'] ?? "-"),
+                                      _row(
+                                        "Kode Peminjaman",
+                                        "PJ-${peminjaman!['id_peminjaman']}",
+                                      ),
+                                      _row(
+                                        "Peminjam",
+                                        peminjaman!['users']?['username'] ??
+                                            "-",
+                                      ),
+                                      _row(
+                                        "Tanggal Peminjaman",
+                                        peminjaman!['tanggal_pinjam'] ?? "-",
+                                      ),
+                                      _row(
+                                        "Tanggal Pengembalian",
+                                        peminjaman!['tanggal_kembali'] ?? "-",
+                                      ),
                                       const SizedBox(height: 16),
                                       Text(
                                         "Daftar Alat",
@@ -176,7 +165,8 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
                                       const SizedBox(height: 8),
                                       Text(
                                         namaAlat,
-                                        style: GoogleFonts.poppins(fontSize: 12),
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 12),
                                       ),
                                     ],
                                   ),
@@ -189,9 +179,11 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
                                 child: ElevatedButton(
                                   onPressed: _cetakPdf,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6C6C87),
+                                    backgroundColor:
+                                        const Color(0xFF6C6C87),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
+                                      borderRadius:
+                                          BorderRadius.circular(15),
                                     ),
                                   ),
                                   child: Text(
@@ -221,7 +213,13 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: GoogleFonts.poppins(fontSize: 12)),
-          Text(value, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -231,9 +229,8 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
   Future<void> _cetakPdf() async {
     try {
       final pdf = pw.Document();
-
-      final helvetica = pw.Font.helvetica();
-      final helveticaBold = pw.Font.helveticaBold();
+      final font = pw.Font.helvetica();
+      final fontBold = pw.Font.helveticaBold();
 
       pdf.addPage(
         pw.Page(
@@ -242,34 +239,66 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
             return pw.Padding(
               padding: const pw.EdgeInsets.all(16),
               child: pw.Container(
+                padding: const pw.EdgeInsets.all(16),
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+                  borderRadius:
+                      const pw.BorderRadius.all(pw.Radius.circular(12)),
                 ),
-                padding: const pw.EdgeInsets.all(16),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Center(
-                      child: pw.Text("TiveStuff", style: pw.TextStyle(font: helveticaBold, fontSize: 16)),
+                      child: pw.Text(
+                        "TiveStuff",
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                     pw.SizedBox(height: 4),
                     pw.Center(
                       child: pw.Text(
                         "JURUSAN OTOMOTIF\nSMKS BRANTAS KARANGKATES",
                         textAlign: pw.TextAlign.center,
-                        style: pw.TextStyle(font: helvetica, fontSize: 12),
+                        style: pw.TextStyle(font: font, fontSize: 12),
                       ),
                     ),
                     pw.SizedBox(height: 16),
-                    _pdfRow("Kode Peminjaman", "PJ-${peminjaman!['id_peminjaman']}", helvetica),
-                    _pdfRow("Peminjam", peminjaman!['users']?['username'] ?? "-", helvetica),
-                    _pdfRow("Tanggal Peminjaman", peminjaman!['tanggal_pinjam'] ?? "-", helvetica),
-                    _pdfRow("Tanggal Pengembalian", peminjaman!['tanggal_kembali'] ?? "-", helvetica),
+                    _pdfRow(
+                      "Kode Peminjaman",
+                      "PJ-${peminjaman!['id_peminjaman']}",
+                      font,
+                    ),
+                    _pdfRow(
+                      "Peminjam",
+                      peminjaman!['users']?['username'] ?? "-",
+                      font,
+                    ),
+                    _pdfRow(
+                      "Tanggal Peminjaman",
+                      peminjaman!['tanggal_pinjam'] ?? "-",
+                      font,
+                    ),
+                    _pdfRow(
+                      "Tanggal Pengembalian",
+                      peminjaman!['tanggal_kembali'] ?? "-",
+                      font,
+                    ),
                     pw.SizedBox(height: 16),
-                    pw.Text("Daftar Alat", style: pw.TextStyle(font: helveticaBold, fontSize: 14)),
+                    pw.Text(
+                      "Daftar Alat",
+                      style: pw.TextStyle(
+                        font: fontBold,
+                        fontSize: 14,
+                      ),
+                    ),
                     pw.SizedBox(height: 8),
-                    pw.Text(namaAlat, style: pw.TextStyle(font: helvetica, fontSize: 12)),
+                    pw.Text(
+                      namaAlat,
+                      style: pw.TextStyle(font: font, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -278,8 +307,9 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
         ),
       );
 
-      // Preview PDF (tanpa langsung print)
-      await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+      await Printing.layoutPdf(
+        onLayout: (format) async => pdf.save(),
+      );
     } catch (e) {
       debugPrint("Error generate PDF: $e");
     }
@@ -291,8 +321,13 @@ class _KartuPeminjamanScreenState extends State<KartuPeminjamanScreen> {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(label, style: pw.TextStyle(font: font, fontSize: 12)),
-          pw.Text(value, style: pw.TextStyle(font: font, fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.Text(label,
+              style: pw.TextStyle(font: font, fontSize: 12)),
+          pw.Text(value,
+              style: pw.TextStyle(
+                  font: font,
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold)),
         ],
       ),
     );
