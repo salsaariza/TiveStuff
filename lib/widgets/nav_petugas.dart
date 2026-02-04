@@ -27,11 +27,11 @@ class NavPetugas extends StatelessWidget {
           label: "Beranda",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.build),
+          icon: Icon(Icons.handyman),
           label: "Peminjaman",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.build),
+          icon: Icon(Icons.inventory_2),
           label: "Pengembalian",
         ),
         BottomNavigationBarItem(

@@ -1,10 +1,8 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tivestuff1/admin/edit_alat_screen.dart';
-
 import '../models/alat_models.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';

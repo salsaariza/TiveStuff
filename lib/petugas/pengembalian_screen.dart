@@ -132,43 +132,80 @@ class _PengembalianContentState extends State<_PengembalianContent> {
 
     return isLoading
         ? const Center(child: CircularProgressIndicator())
-        : ListView.builder(
+        : Padding(
             padding: const EdgeInsets.all(16),
-            itemCount: filtered.length,
-            itemBuilder: (context, i) {
-              final d = filtered[i];
-              final sudah = d['status'] == 'selesai';
-
-              return _BaseCardPengembalian(
-                id: d['kode'],
-                nama: d['nama'],
-                kelas: d['kelas'],
-                tanggalPinjam: formatTanggal(d['tanggal_pinjam']),
-                alat: d['alat'],
-                tanggalKembali: formatTanggal(d['tanggal_kembali']),
-                button: ElevatedButton(
-                  onPressed: sudah
-                      ? null
-                      : () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DetailPengembalianScreen(data: d),
-                            ),
-                          );
-                          if (result == true) fetchPengembalian();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: sudah
-                        ? Colors.grey
-                        : const Color(0xFF5B8F2E),
-                  ),
-                  child: Text(
-                    sudah ? 'Sudah Dikonfirmasi' : 'Konfirmasi Pengembalian',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Pengembalian",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              );
-            },
+                const SizedBox(height: 12),
+                TextField(
+                      onChanged: (v) => setState(() => search = v),
+                      decoration: InputDecoration(
+                        hintText: "Cari",
+                        suffixIcon: const Icon(Icons.search),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) {
+                      final d = filtered[i];
+                      final sudah = d['status'] == 'selesai';
+
+                      return _BaseCardPengembalian(
+                        id: d['kode'],
+                        nama: d['nama'],
+                        kelas: d['kelas'],
+                        tanggalPinjam: formatTanggal(d['tanggal_pinjam']),
+                        alat: d['alat'],
+                        tanggalKembali: formatTanggal(d['tanggal_kembali']),
+                        button: ElevatedButton(
+                          onPressed: sudah
+                              ? null
+                              : () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          DetailPengembalianScreen(data: d),
+                                    ),
+                                  );
+                                  if (result == true) fetchPengembalian();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: sudah
+                                ? Colors.grey
+                                : const Color(0xFF5B8F2E),
+                          ),
+                          child: Text(
+                            sudah
+                                ? 'Sudah Dikonfirmasi'
+                                : 'Konfirmasi Pengembalian',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           );
   }
 }

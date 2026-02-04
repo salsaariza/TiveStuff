@@ -130,13 +130,11 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
             const HeaderPetugas(),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? size.width * 0.15 : 20,
-                ),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Text(
                       "Pengajuan Peminjaman",
                       style: GoogleFonts.poppins(
@@ -149,6 +147,7 @@ class _PengajuanPeminjamanScreenState extends State<PengajuanPeminjamanScreen> {
                       onChanged: (v) => setState(() => searchQuery = v),
                       decoration: InputDecoration(
                         hintText: "Cari",
+                        hintStyle: GoogleFonts.poppins(fontSize: 15),
                         suffixIcon: const Icon(Icons.search),
                         filled: true,
                         fillColor: Colors.white,
@@ -302,14 +301,16 @@ class _PengajuanCardState extends State<PengajuanCard> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => updateStatus('ditolak'),
-                    child: const Text("Tolak"),
+                    child:  Text("Tolak",
+                    style: GoogleFonts.poppins(fontSize: 15)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => updateStatus('disetujui'),
-                    child: const Text("Setuju"),
+                    child: Text("Setuju",
+                    style: GoogleFonts.poppins(fontSize: 15)),
                   ),
                 ),
               ],
@@ -342,7 +343,7 @@ class _PengajuanCardState extends State<PengajuanCard> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFFADCDC),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: Colors.red),
               ),
               child: Row(

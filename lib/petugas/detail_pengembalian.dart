@@ -121,6 +121,7 @@ class _DetailPengembalianScreenState extends State<DetailPengembalianScreen> {
                       items: const [
                         DropdownMenuItem(value: 'baik', child: Text('Baik')),
                         DropdownMenuItem(value: 'rusak', child: Text('Rusak')),
+                        DropdownMenuItem(value: 'pemeliharaan', child: Text('Pemeliharaan')),
                       ],
                       onChanged: (v) => setState(() => kondisi = v!),
                       decoration: InputDecoration(

@@ -625,7 +625,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      /// TYPE (HIJAU) → Peminjaman / Pengembalian
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,

@@ -179,31 +179,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisSpacing: 12,
         childAspectRatio: 1.4,
         children: [
-          _statCard(context, totalUser.toString(), "PENGGUNA"),
-          _statCard(context, totalAlat.toString(), "JUMLAH ALAT"),
-          _statCard(context, alatTersedia.toString(), "ALAT TERSEDIA"),
-          _statCard(context, alatDipinjam.toString(), "ALAT DIPINJAM"),
+          _statCard(
+            context,
+            icon: Icons.people,
+            value: totalUser.toString(),
+            title: "PENGGUNA",
+          ),
+          _statCard(
+            context,
+            icon: Icons.build,
+            value: totalAlat.toString(),
+            title: "JUMLAH ALAT",
+          ),
+          _statCard(
+            context,
+            icon: Icons.check_circle,
+            value: alatTersedia.toString(),
+            title: "ALAT TERSEDIA",
+          ),
+          _statCard(
+            context,
+            icon: Icons.assignment_return,
+            value: alatDipinjam.toString(),
+            title: "ALAT DIPINJAM",
+          ),
         ],
       ),
     );
   }
 
   // ================= CARD =================
-  Widget _statCard(BuildContext context, String value, String title) {
+  Widget _statCard(
+    BuildContext context, {
+    required IconData icon,
+    required String value,
+    required String title,
+  }) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade400, width: 2),
+        border: Border.all(color: Colors.grey.shade400, width: 3),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(
+            icon,
+            size: rf(context, 28),
+            color: Color(0xFF6C6D7A),
+          ),
+          const SizedBox(height: 5),
           Text(
             value,
             style: GoogleFonts.poppins(
-              fontSize: rf(context, 20),
+              fontSize: rf(context, 17),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -212,7 +243,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             title,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-              fontSize: rf(context, 14),
+              fontSize: rf(context, 13),
+              fontWeight: FontWeight.w400,
               color: Colors.grey.shade600,
             ),
           ),

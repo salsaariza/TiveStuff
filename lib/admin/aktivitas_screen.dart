@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../widgets/header_back.dart';
 import '../widgets/nav_admin.dart';
 
@@ -73,6 +76,43 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
               .toLowerCase()
               .contains(searchQuery.toLowerCase());
     }).toList();
+  }
+
+  // ================= CETAK PDF =================
+  Future<void> printPdf() async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Text('Laporan Aktivitas', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 20),
+            pw.Table.fromTextArray(
+              headers: ['No', 'Aktivitas', 'Nama', 'Waktu'],
+              data: List<List<String>>.generate(
+                filteredAktivitas.length,
+                (index) {
+                  final item = filteredAktivitas[index];
+                  final waktu = item['created_at'] != null
+                      ? "${item['created_at'].day}-${item['created_at'].month}-${item['created_at'].year} ${item['created_at'].hour}:${item['created_at'].minute.toString().padLeft(2, '0')}"
+                      : '';
+                  return [
+                    (index + 1).toString(),
+                    item['aktivitas'],
+                    item['petugas'],
+                    waktu,
+                  ];
+                },
+              ),
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
   @override
@@ -173,6 +213,14 @@ class _AktivitasScreenState extends State<AktivitasScreen> {
             ),
           ],
         ),
+      ),
+
+      // ================= FLOATING ACTION BUTTON =================
+      floatingActionButton: FloatingActionButton(
+        onPressed: printPdf,
+        backgroundColor: const Color(0xFF6C6D7A),
+        child: const Icon(Icons.picture_as_pdf, color: Colors.white),
+        tooltip: "Cetak Laporan Aktivitas",
       ),
     );
   }

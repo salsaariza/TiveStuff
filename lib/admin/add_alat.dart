@@ -37,10 +37,8 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
 
   bool isLoading = false;
 
-  // ✅ FORM VALIDASI
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // ✅ ERROR DROPDOWN
   String? kategoriError;
 
   @override
@@ -90,7 +88,6 @@ class _TambahAlatScreenState extends State<TambahAlatScreen> {
   }
 
   /// ================= SUBMIT FORM =================
-  /// ================= SUBMIT FORM REALTIME =================
   Future<void> submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 

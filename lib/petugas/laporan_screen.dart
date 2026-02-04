@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tivestuff1/widgets/back_petugas.dart';
 import 'package:tivestuff1/widgets/nav_petugas.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// PDF & PRINTING
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class LaporanScreen extends StatefulWidget {
   const LaporanScreen({super.key});
@@ -16,7 +21,6 @@ class _LaporanScreenState extends State<LaporanScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
 
-      // ================= BODY =================
       body: SafeArea(
         child: Column(
           children: const [
@@ -26,7 +30,6 @@ class _LaporanScreenState extends State<LaporanScreen> {
         ),
       ),
 
-      // ================= NAVBAR =================
       bottomNavigationBar: NavPetugas(
         currentIndex: 3,
         onTap: (index) {
@@ -57,6 +60,131 @@ class _LaporanContent extends StatefulWidget {
 }
 
 class _LaporanContentState extends State<_LaporanContent> {
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  bool isLoading = true;
+
+  List peminjamanList = [];
+  List pengembalianList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchLaporan();
+  }
+
+  // ================= FETCH DATA =================
+  Future<void> fetchLaporan() async {
+    try {
+      // ================= PEMINJAMAN JOIN USERS + ALAT =================
+      final peminjamanData = await supabase
+          .from('peminjaman')
+          .select('''
+      id_peminjaman,
+      tanggal_pinjam,
+      tanggal_kembali,
+      status_peminjaman,
+      users: id_user (
+        username
+      ),
+      alat: id_alat (
+        nama_alat
+      )
+    ''')
+          .order('tanggal_pinjam', ascending: false);
+
+      // ================= PENGEMBALIAN JOIN PEMINJAMAN + ALAT =================
+      final pengembalianData = await supabase
+          .from('pengembalian')
+          .select('''
+      id_pengembalian,
+      tanggal_kembali,
+      hari_terlambat,
+      kondisi_alat,
+      total_denda,
+      peminjaman: id_peminjaman (
+        alat: id_alat (
+          nama_alat
+        )
+      )
+    ''')
+          .order('tanggal_kembali', ascending: false);
+
+      setState(() {
+        peminjamanList = peminjamanData;
+        pengembalianList = pengembalianData;
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("ERROR FETCH LAPORAN: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  // ================= GENERATE PDF =================
+  Future<void> cetakLaporanPDF() async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          pw.Text(
+            "LAPORAN AKTIVITAS PEMINJAMAN & PENGEMBALIAN",
+            style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 20),
+
+          // ================= PEMINJAMAN =================
+          pw.Text(
+            "Data Peminjaman",
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 10),
+
+          pw.Table.fromTextArray(
+            headers: ["ID", "Nama", "Alat", "Tanggal Peminjaman", "Status"],
+            data: peminjamanList.map((item) {
+              return [
+                item['id_peminjaman'].toString(),
+                item['users']?['username'] ?? "-",
+                item['alat']?['nama_alat'] ?? "-",
+
+                item['tanggal_pinjam'].toString().substring(0, 10),
+                item['status_peminjaman'].toString(),
+              ];
+            }).toList(),
+          ),
+
+          pw.SizedBox(height: 25),
+
+          // ================= PENGEMBALIAN =================
+          pw.Text(
+            "Data Pengembalian",
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 10),
+
+          pw.Table.fromTextArray(
+            headers: ["ID", "Alat", "Terlambat", "Kondisi", "Total Denda"],
+            data: pengembalianList.map((item) {
+              return [
+                item['id_pengembalian'].toString(),
+                item['peminjaman']?['alat']?['nama_alat'] ?? "-",
+                item['hari_terlambat'].toString(),
+                item['kondisi_alat'].toString(),
+                item['total_denda'].toString(),
+              ];
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+
+    // ================= PRINT / SHARE =================
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -74,7 +202,6 @@ class _LaporanContentState extends State<_LaporanContent> {
           ),
           const SizedBox(height: 20),
 
-          // ================= CARD LAPORAN =================
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -99,7 +226,6 @@ class _LaporanContentState extends State<_LaporanContent> {
                 ),
                 const SizedBox(height: 12),
 
-                // ICON DOKUMEN
                 Icon(
                   Icons.description_outlined,
                   size: 56,
@@ -107,6 +233,7 @@ class _LaporanContentState extends State<_LaporanContent> {
                 ),
 
                 const SizedBox(height: 12),
+
                 Text(
                   'Dokumen rekapan aktivitas peminjaman\n'
                   'dan pengembalian alat jurusan otomotif.',
@@ -119,7 +246,6 @@ class _LaporanContentState extends State<_LaporanContent> {
 
                 const SizedBox(height: 20),
 
-                // BUTTON CETAK
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -130,9 +256,9 @@ class _LaporanContentState extends State<_LaporanContent> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: isLoading ? null : cetakLaporanPDF,
                     child: Text(
-                      'Cetak Laporan',
+                      isLoading ? "Memuat..." : "Cetak Laporan",
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
